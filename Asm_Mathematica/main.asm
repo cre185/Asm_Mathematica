@@ -78,9 +78,17 @@ ErrorTitle  BYTE "Error",0
 WindowName  BYTE "Asm Mathematica",0
 className   BYTE "ASMWin",0
 
+fileMsg    BYTE "文件",0
+subMsg     BYTE "新建",0
+sub2ndMsg  BYTE "打开",0
+
 msg	      MSGStruct <>
 winRect   RECT <>
 hMainWnd  DWORD ?
+
+hFileMenu DWORD ?
+hSubMenu  DWORD ?
+
 hInstance DWORD ?
 
 ; Define the Application's Window class structure.
@@ -121,6 +129,16 @@ WinMain PROC
 	  call ErrorHandler
 	  jmp  Exit_Program
 	.ENDIF
+
+; Create a menu
+	INVOKE CreateMenu
+	mov hFileMenu, eax
+	INVOKE CreateMenu
+	mov hSubMenu, eax
+	INVOKE AppendMenuA, hSubMenu, 0, NULL, ADDR subMsg
+	INVOKE AppendMenuA, hSubMenu, 0, NULL, ADDR sub2ndMsg
+	INVOKE AppendMenuA, hFileMenu, 10h, hSubMenu, ADDR fileMsg
+	INVOKE SetMenu, hMainWnd, hFileMenu
 
 ; Show and draw the window.
 	INVOKE ShowWindow, hMainWnd, SW_SHOW
