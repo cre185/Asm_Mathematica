@@ -15,8 +15,8 @@ include         msvcrt.inc
 includelib      msvcrt.lib
 include         shell32.inc
 includelib      shell32.lib
-include  		calculate.inc
-include			resource.inc
+include			rowBox.inc
+include			macro.inc
 
 MSGStruct STRUCT
   msgWnd        DWORD ?
@@ -28,7 +28,7 @@ MSGStruct STRUCT
 MSGStruct ENDS
 
 MAIN_WINDOW_STYLE = WS_VISIBLE+WS_DLGFRAME+WS_CAPTION+WS_BORDER+WS_SYSMENU \
-	+WS_MAXIMIZEBOX+WS_MINIMIZEBOX+WS_THICKFRAME
+	+WS_MAXIMIZEBOX+WS_MINIMIZEBOX+WS_THICKFRAME+WS_VSCROLL
 
 ;==================== DATA =======================
 .data
@@ -47,8 +47,6 @@ GreetText  BYTE "This window is shown immediately after "
 	       BYTE "CreateWindow and UpdateWindow are called.",0
 
 ErrorTitle  BYTE "Error",0
-EmptyText BYTE 0
-public EmptyText
 
 WindowName  BYTE "Asm Mathematica",0
 className   BYTE "ASMWin",0
@@ -56,24 +54,23 @@ className   BYTE "ASMWin",0
 fileMsg    BYTE "文件",0
 subMsg     BYTE "新建",0
 sub2ndMsg  BYTE "打开",0
-EDIT	   BYTE "Edit",0
 
 msg	      MSGStruct <>
 winRect   RECT <>
+
 hMainWnd  DWORD 0
-hEditWnd  DWORD ?
-public hMainWnd, hEditWnd
+public hMainWnd
 
 hFileMenu DWORD ?
 hSubMenu  DWORD ?
 public hFileMenu, hSubMenu
 
 hInstance DWORD ?
+public hInstance
 
 ; Define the Application's Window class structure.
 MainWin WNDCLASS <NULL,WinProc,NULL,NULL,NULL,NULL,NULL, \
 	COLOR_WINDOW,NULL,className>
-
 ;=================== CODE =========================
 .code
 
@@ -92,8 +89,8 @@ WinMain PROC
 	mov MainWin.hCursor, eax
 
 ; Initialize brush for main window 
-	INVOKE CreateSolidBrush, 0ffffffh
-	mov MainWin.hbrBackground, eax
+;	INVOKE CreateSolidBrush, 0ffffffh
+;	mov MainWin.hbrBackground, eax
 
 ; Register the window class.
 	INVOKE RegisterClassA, ADDR MainWin
@@ -115,6 +112,9 @@ WinMain PROC
 	  call ErrorHandler
 	  jmp  Exit_Program
 	.ENDIF
+
+	INVOKE InitRowBox
+	INVOKE CreateNewBox
 
 ; Create a menu
 	INVOKE InitMenu
@@ -159,48 +159,6 @@ InitMenu PROC
 InitMenu ENDP
 
 ;-----------------------------------------------------
-EditSize PROC
-; Change the size of edit based on the window size
-;-----------------------------------------------------
-.data 
-	WndRect RECT <>
-
-.code
-	.IF hMainWnd == 0 
-		ret
-	.ENDIF
-	push eax
-	push ebx
-	mov eax, hMainWnd
-	mov eax, hEditWnd
-	INVOKE GetWindowRect, hMainWnd, ADDR WndRect
-	.IF eax == 0
-		 call ErrorHandler
-	.ENDIF
-	mov eax, WndRect.right
-	sub eax, WndRect.left
-	mov ebx, WndRect.bottom
-	sub ebx, WndRect.top
-	sub eax, 100
-	sub ebx, 120
-	INVOKE MoveWindow, hEditWnd, 30, 30, eax, ebx, 1
-	pop ebx
-	pop eax
-	ret
-EditSize ENDP
-
-;-----------------------------------------------------
-EditProc PROC,
-	hWnd:DWORD, localMsg:DWORD, wParam:DWORD, lParam:DWORD
-; The edit box's message handler, which handles
-; application-specific messages. All other messages
-; are forwarded to the default Windows message
-; handler.
-;-----------------------------------------------------
-	ret
-EditProc ENDP
-
-;-----------------------------------------------------
 WinProc PROC,
 	hWnd:DWORD, localMsg:DWORD, wParam:DWORD, lParam:DWORD
 ; The application's message handler, which handles
@@ -211,31 +169,15 @@ WinProc PROC,
 	mov eax, localMsg
 
 	.IF eax == WM_CREATE		; create window
-		INVOKE MessageBox, hWnd, ADDR AppLoadMsgText,
-			ADDR AppLoadMsgTitle, MB_OK
-
-		; The edit box
-		INVOKE CreateWindowExA, 0, ADDR EDIT,
-			ADDR EDIT, WS_CHILD+WS_VISIBLE+ES_LEFT+ES_MULTILINE, 
-			CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, 
-			CW_USEDEFAULT,hWnd,FromEdit,hInstance,NULL
-		.IF eax == 0
-			call ErrorHandler
-		.ENDIF
-		mov hEditWnd, eax
-		INVOKE ShowWindow, hEditWnd, SW_SHOW
-		INVOKE SendMessage, hEditWnd, WM_SETTEXT, 0, ADDR EmptyText
-
+		; Initiate the edit box
 		jmp WinProcExit
 	.ELSEIF eax == WM_CLOSE		; close window
 		INVOKE PostQuitMessage,0
 		jmp WinProcExit
 	.ELSEIF eax == WM_SIZE
-		INVOKE EditSize
-	.ELSE		; other message?
-		INVOKE DefWindowProc, hWnd, localMsg, wParam, lParam
-		jmp WinProcExit
+		INVOKE ChangeBoxSize
 	.ENDIF
+	INVOKE DefWindowProc, hWnd, localMsg, wParam, lParam
 
 WinProcExit:
 	ret
@@ -266,6 +208,6 @@ messageID  DWORD ?
 	ret
 ErrorHandler ENDP
 
-; INVOKE SendMessage, hEditWnd, WM_SETTEXT, 0, ADDR TestText
+; INVOKE MessageBox, NULL, ADDR PopupTitle, ADDR PopupText, MB_OK
 
 END WinMain

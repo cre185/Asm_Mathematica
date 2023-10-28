@@ -1,0 +1,8 @@
+IFNDEF ROWBOX_INC
+ROWBOX_INC equ <1>
+
+InitRowBox PROTO
+CreateNewBox PROTO
+ChangeBoxSize PROTO
+
+ENDIF

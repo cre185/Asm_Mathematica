@@ -1,4 +1,6 @@
 IFNDEF CALCULATE_INC
 CALCULATE_INC equ <1>
 
+CalculateResult PROTO
+
 ENDIF
