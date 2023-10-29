@@ -176,6 +176,8 @@ EditProc PROC,
 			.ENDIF
 		.ENDIF
 		ret
+	.ELSEIF eax == WM_CHAR && wParam == VK_RETURN
+		ret
 	.ENDIF
 	INVOKE CallWindowProc, originalEditProc, hWnd, localMsg, wParam, lParam
 	ret
@@ -212,6 +214,18 @@ CreateNewBox PROC
 	.IF hMainWnd == 0 
 		ret
 	.ENDIF
+
+	; change the predecessor's size back to normal
+	; always let the last window to fill the screen
+	.IF RowBoxCount != 0
+		mov ebx, RowBoxCount
+		dec ebx
+		INVOKE GetWindowRect, [hRowBox+4*ebx], ADDR WndRect
+		mov edx, WndRect.right
+		sub edx, WndRect.left
+		INVOKE SetWindowPos, [hRowBox+4*ebx], NULL, NULL, NULL, edx, boxHeight, SWP_NOMOVE+SWP_NOOWNERZORDER
+	.ENDIF
+
 	INVOKE GetWindowRect, hMainWnd, ADDR WndRect
 	.IF eax == 0
 		 call ErrorHandler
@@ -219,10 +233,12 @@ CreateNewBox PROC
 	mov eax, WndRect.right
 	sub eax, WndRect.left
 	sub eax, 100
+	mov edx, WndRect.bottom
+	sub edx, WndRect.top
 	INVOKE CreateWindowEx, 0, ADDR RowBoxName,
 		NULL, WS_CHILD+WS_VISIBLE, 
 		20, currentY, eax, 
-		boxHeight,hMainWnd,ToMain,hInstance,NULL
+		edx,hMainWnd,ToMain,hInstance,NULL
 	.IF eax == 0
 		call ErrorHandler
 		pop eax
@@ -246,10 +262,12 @@ CreateNewBox PROC
 	.ENDIF
 	mov [hStatic+4*ebx], eax
 
+	mov edx, WndRect.bottom
+	sub edx, WndRect.top
 	INVOKE CreateWindowEx, 0, ADDR EDIT,
 		NULL, WS_CHILD+WS_VISIBLE+ES_LEFT, 
 		staticWidth, 0, eax, 
-		boxHeight,[hRowBox+4*ebx],ToRowBox,hInstance,NULL
+		edx,[hRowBox+4*ebx],ToRowBox,hInstance,NULL
 	.IF eax == 0
 		call ErrorHandler
 		ret
@@ -261,6 +279,7 @@ CreateNewBox PROC
 		call ErrorHandler
 	.ENDIF
 	mov originalEditProc, eax
+
 	inc RowBoxCount
 	ret
 CreateNewBox ENDP
@@ -289,5 +308,3 @@ ChangeBoxSize PROC
 ChangeBoxSize ENDP
 
 END
-;	INVOKE LoadBitmap, hInstance, IDB_BITMAP1
-;	INVOKE SendMessage, hStatic, STM_SETIMAGE, IMAGE_BITMAP, eax

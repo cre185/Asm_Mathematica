@@ -89,8 +89,8 @@ WinMain PROC
 	mov MainWin.hCursor, eax
 
 ; Initialize brush for main window 
-;	INVOKE CreateSolidBrush, 0ffffffh
-;	mov MainWin.hbrBackground, eax
+	INVOKE CreateSolidBrush, 0ffffffh
+	mov MainWin.hbrBackground, eax
 
 ; Register the window class.
 	INVOKE RegisterClassA, ADDR MainWin
@@ -113,15 +113,16 @@ WinMain PROC
 	  jmp  Exit_Program
 	.ENDIF
 
-	INVOKE InitRowBox
-	INVOKE CreateNewBox
-
 ; Create a menu
 	INVOKE InitMenu
 
 ; Show and draw the window.
 	INVOKE ShowWindow, hMainWnd, SW_SHOW
 	INVOKE UpdateWindow, hMainWnd
+
+; Initialize boxes and create the default one
+	INVOKE InitRowBox
+	INVOKE CreateNewBox
 
 ; Begin the program's message-handling loop.
 Message_Loop:
