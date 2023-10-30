@@ -38,9 +38,9 @@ CalculateResult PROC
 	; todo: use any treatments you like and get the result
 	; following are testing information
 	mov eax, offset ansBuffer
-	mov BYTE PTR [eax], 72
-	mov BYTE PTR [eax+1], 73
-	mov BYTE PTR [eax+2], 33
+	mov BYTE PTR [eax], 72		; 'H'
+	mov BYTE PTR [eax+1], 73	; 'I'
+	mov BYTE PTR [eax+2], 33	; '!'
 	ret
 CalculateResult ENDP
 
