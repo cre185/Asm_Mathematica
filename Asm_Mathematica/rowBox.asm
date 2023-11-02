@@ -21,6 +21,7 @@ include			macro.inc
 includelib      msvcrt.lib
 sprintf         PROTO C :ptr sbyte, :ptr sbyte, :VARARG
 strlen			PROTO C :ptr sbyte
+memset			PROTO C :ptr sbyte, :DWORD, :DWORD
 
 ;==================== DATA =======================
 .data
@@ -141,6 +142,8 @@ EditProc PROC,
 				INVOKE MessageBox, NULL, addr ErrorTitle, addr SizeError, MB_OK
 				ret
 			.ENDIF
+
+			INVOKE memset, ADDR recvBuffer, 0, MaxBufferSize
 			INVOKE GetEditIndex, hWnd
 			mov EditIndex, ecx
 			INVOKE GetWindowText, [hEditWnd+4*ecx], ADDR recvBuffer, eax
