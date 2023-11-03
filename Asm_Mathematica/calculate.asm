@@ -80,8 +80,8 @@ IsOperator PROC,
 	mov ecx, 0
 	mov ebx, array
 	add ebx, index
-	mov al, BYTE PTR [OperatorList]
-	.WHILE ecx < OperatorListLength
+	mov al, BYTE PTR [OperatorTable]
+	.WHILE ecx < OperatorTableLength
 		.IF al == BYTE PTR [ebx]
 			pushad
 			mov ecx, 0
@@ -90,7 +90,7 @@ IsOperator PROC,
 				mov ebx, array
 				add ebx, index
 				mov al, BYTE PTR [ebx+ecx]
-				mov dl, BYTE PTR [OperatorList+ecx]
+				mov dl, BYTE PTR [OperatorTable+ecx]
 			.UNTIL dl == 32 || dl != al
 			.IF dl == 32
 				mov len, ecx
@@ -102,7 +102,7 @@ IsOperator PROC,
 			popad
 		.ENDIF
 		inc ecx
-		mov al, BYTE PTR [OperatorList+ecx]
+		mov al, BYTE PTR [OperatorTable+ecx]
 	.ENDW
 	popad
 	mov eax, 0
@@ -250,69 +250,63 @@ PolishNotation PROC
 		inc ecx
 		mov al, BYTE PTR [recvBuffer+ecx]
 	.ENDW
-	mov ecx, 0
-	mov bl, BYTE PTR [recvBuffer]
-	mov edx, 0
-	.WHILE bl != 0
-		INVOKE IsOperator, ADDR recvBuffer, ecx
-		.IF (eax > 0 && edx == 0) || (eax == 0 && edx > 0)
-			INVOKE InsertChar, ADDR recvBuffer, ecx, 32
-			add ecx, eax
-			mov edx, eax
-		.ENDIF
-		inc ecx
-		mov bl, BYTE PTR [recvBuffer+ecx]
-	.ENDW
 
 ; step 2: add () for every operator
-	mov i, 0
-	mov eax, offset recvBuffer
-	mov bl, BYTE PTR [recvBuffer]
-	.WHILE bl != 0
-		mov j, 0
-		mov al, BYTE PTR [OperatorList]
-		.WHILE al != 0
-			.IF bl == al && al != 32
-				pushad
-				mov k, 1
-				mov ecx, i
-				inc ecx
-				mov al, BYTE PTR [OperatorList+ecx]
-				mov ecx, j
-				inc ecx 
-				mov bl, BYTE PTR [recvBuffer+ecx]
-				.WHILE al == bl && al != 0 && bl != 0 && al != 32
-					inc k
+	mov ecx, 0
+	.WHILE ecx < OperatorTableHeight
+		push ecx
+		INVOKE UpdateOperator, ecx
+		mov i, 0
+		mov bl, BYTE PTR [recvBuffer]
+		.WHILE bl != 0
+			mov j, 0
+			mov al, BYTE PTR [OperatorList]
+			.WHILE al != 0
+				.IF bl == al && al != 32
+					pushad
+					mov k, 1
 					mov ecx, j
-					add ecx, k
+					inc ecx
 					mov al, BYTE PTR [OperatorList+ecx]
 					mov ecx, i
-					add ecx, k
+					inc ecx 
 					mov bl, BYTE PTR [recvBuffer+ecx]
-				.ENDW
-				.IF al == 32 ; i: position of operator, k: op length
-					INVOKE AddBrace, ADDR recvBuffer, i, k
+					.WHILE al == bl && al != 0 && bl != 0 && al != 32
+						inc k
+						mov ecx, j
+						add ecx, k
+						mov al, BYTE PTR [OperatorList+ecx]
+						mov ecx, i
+						add ecx, k
+						mov bl, BYTE PTR [recvBuffer+ecx]
+					.ENDW
+					.IF al == 32 ; i: position of operator, k: op length
+						INVOKE AddBrace, ADDR recvBuffer, i, k
+						popad
+						inc i
+						jmp restart
+					.ENDIF
 					popad
-					inc i
-					jmp restart
 				.ENDIF
-				popad
-			.ENDIF
-			inc j
-			mov ecx, j
-			mov al, BYTE PTR [OperatorList+ecx]
+				inc j
+				mov ecx, j
+				mov al, BYTE PTR [OperatorList+ecx]
+			.ENDW
+			restart:
+			inc i
+			mov ecx, i
+			mov bl, BYTE PTR [recvBuffer+ecx]
 		.ENDW
-		restart:
-		inc i
-		mov ecx, i
-		mov bl, BYTE PTR [recvBuffer+ecx]
+		pop ecx 
+		inc ecx
 	.ENDW
 
 ; step 3: move operators to the right and remove all the braces
 	mov ecx, 0
-	mov al, BYTE PTR [OperatorList]
-	.WHILE al != 0
-		.IF al != 32
+	mov eax, offset recvBuffer
+	mov al, BYTE PTR [OperatorTable]
+	.WHILE ecx < OperatorTableLength
+		.IF al != 32 && al != 0
 			pushad
 			mov ecx, SIZE recvBuffer
 			.REPEAT
@@ -333,13 +327,14 @@ PolishNotation PROC
 					inc ecx
 					INVOKE InsertChar, ADDR recvBuffer, ecx, bl
 					popad
-					INVOKE RemoveChar, ADDR recvBuffer, ecx
+					; INVOKE RemoveChar, ADDR recvBuffer, ecx
+					mov recvBuffer[ecx], 32
 				.ENDIF
 			.UNTIL ecx == 0
 			popad
 		.ENDIF
 		inc ecx
-		mov al, BYTE PTR [OperatorList+ecx]
+		mov al, BYTE PTR [OperatorTable+ecx]
 	.ENDW
 	mov ecx, 0
 	mov al, BYTE PTR [recvBuffer]
@@ -369,14 +364,7 @@ CalculateResult PROC
 ;-----------------------------------------------------
 	inc CalCount
 	INVOKE memset, ADDR ansBuffer, 0, MaxBufferSize
-	mov ecx, 0
-	.WHILE ecx < OperatorTableHeight
-		push ecx
-		INVOKE UpdateOperator, ecx
-		INVOKE PolishNotation
-		pop ecx
-		inc ecx
-	.ENDW
+	INVOKE PolishNotation
 	INVOKE CalculatePN
 	ret
 CalculateResult ENDP
