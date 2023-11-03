@@ -28,18 +28,47 @@ recvBuffer BYTE MaxBufferSize DUP(0)
 ansBuffer BYTE MaxBufferSize DUP(0)
 public recvBuffer, ansBuffer
 
-OperatorList BYTE "* / + - ",0
-OperatorListLength DWORD $-OperatorList
-public OperatorListLength
+OperatorTable BYTE "* /                            ",0
+			  BYTE "+ -                            ",0
+OperatorList BYTE OperatorListLength DUP(0)
 
 TestTitle BYTE "test",0
 TestText BYTE "reached here!",0
-CalFailure BYTE "!Calculation failed!",0
+FailureText BYTE "!Calculation failed!",0
+FailureSign BYTE 0
+public FailureSign
 
 CalCount DWORD 0
 public CalCount
 
 .code
+;-----------------------------------------------------
+ParseFailure PROC
+; Generate an output representing that some exception 
+; occured in the parsing process
+;-----------------------------------------------------
+	INVOKE MessageBox, NULL, ADDR FailureText, ADDR FailureText, MB_ICONERROR+MB_OK
+	mov FailureSign, 1
+	ret
+ParseFailure ENDP
+
+.code
+;-----------------------------------------------------
+UpdateOperator PROC,
+	index:DWORD
+; Update the OperatorList using the designated line of OperatorTable
+;-----------------------------------------------------
+	pushad
+	mov eax, index
+	mov edx, OperatorListLength
+	mul edx
+	mov ecx, offset OperatorTable
+	add ecx, eax
+	INVOKE strncpy, ADDR OperatorList, ecx, OperatorListLength 
+	popad
+	ret
+UpdateOperator ENDP
+
 ;-----------------------------------------------------
 IsOperator PROC,
 	array:DWORD, index:DWORD
@@ -128,13 +157,14 @@ AddBrace PROC,
 	; right
 	mov ecx, j
 	add ecx, k
-	mov bl, BYTE PTR [recvBuffer+ecx]
+	mov edx, array
+	mov bl, BYTE PTR [edx+ecx]
 	.IF bl == 40 ; (
 		mov ecx, j
 		add ecx, k
 		inc ecx
 		mov eax, 1
-		mov bl, BYTE PTR [recvBuffer+ecx]
+		mov bl, BYTE PTR [edx+ecx]
 		.WHILE bl != 0 && eax > 0
 			.IF bl == 40
 				inc eax
@@ -142,33 +172,33 @@ AddBrace PROC,
 				dec eax
 			.ENDIF
 			inc ecx
-			mov bl, BYTE PTR [recvBuffer+ecx]
+			mov bl, BYTE PTR [edx+ecx]
 		.ENDW
 		.IF eax != 0
 			; exception
 		.ENDIF
-		INVOKE InsertChar, ADDR recvBuffer, ecx, 41
+		INVOKE InsertChar, array, ecx, 41
 	.ELSE
 		mov ecx, j
 		add ecx, k
 		inc ecx
-		mov bl, BYTE PTR [recvBuffer+ecx]
+		mov bl, BYTE PTR [edx+ecx]
 		.WHILE ecx >= 0 && ((bl >= 48 && bl <= 57) || (bl >= 97) && (bl <= 122) || bl == 32)
 			inc ecx
-			mov bl, BYTE PTR [recvBuffer+ecx]
+			mov bl, BYTE PTR [edx+ecx]
 		.ENDW
-		INVOKE InsertChar, ADDR recvBuffer, ecx, 41
+		INVOKE InsertChar, array, ecx, 41
 	.ENDIF
 
 	; left
 	mov ecx, j
 	dec ecx
-	mov bl, BYTE PTR [recvBuffer+ecx]
+	mov bl, BYTE PTR [edx+ecx]
 	.IF bl == 41 ; )
 		mov ecx, j
 		sub ecx, 2
 		mov eax, 1
-		mov bl, BYTE PTR [recvBuffer+ecx]
+		mov bl, BYTE PTR [edx+ecx]
 		.WHILE ecx >= 0 && eax > 0
 			.IF bl == 41
 				inc eax
@@ -176,26 +206,26 @@ AddBrace PROC,
 				dec eax
 			.ENDIF
 			dec ecx
-			mov bl, BYTE PTR [recvBuffer+ecx]
+			mov bl, BYTE PTR [edx+ecx]
 		.ENDW
 		.IF ecx < 0
 			; exception
 		.ENDIF
 		inc ecx
-		INVOKE InsertChar, ADDR recvBuffer, ecx, 40
+		INVOKE InsertChar, array, ecx, 40
 	.ELSE
 		mov ecx, j
 		sub ecx, 2
-		mov bl, BYTE PTR [recvBuffer+ecx]
+		mov bl, BYTE PTR [edx+ecx]
 		.WHILE ecx >= 0 && ((bl >= 48 && bl <= 57) || (bl >= 97) && (bl <= 122) || bl == 32)
 			dec ecx
-			mov bl, BYTE PTR [recvBuffer+ecx]
+			mov bl, BYTE PTR [edx+ecx]
 		.ENDW
 		.IF ecx < 0
 			; exception
 		.ENDIF
 		inc ecx
-		INVOKE InsertChar, ADDR recvBuffer, ecx, 40
+		INVOKE InsertChar, array, ecx, 40
 	.ENDIF
 
 	popad
@@ -237,44 +267,45 @@ PolishNotation PROC
 ; step 2: add () for every operator
 	mov i, 0
 	mov eax, offset recvBuffer
-	mov al, BYTE PTR [OperatorList]
-	.WHILE al != 0
-		.IF al != 32 ; is an operator
-			mov j, 0
-			mov bl, BYTE PTR [recvBuffer]
-			.WHILE bl != 0
-				.IF bl == al
-					push eax
-					mov k, 1
-					mov ecx, i
-					inc ecx
-					mov al, BYTE PTR [OperatorList+ecx]
-					mov ecx, j
-					inc ecx 
-					mov bl, BYTE PTR [recvBuffer+ecx]
-					.WHILE al == bl && al != 0 && bl != 0 && al != 32
-						inc k
-						mov ecx, i
-						add ecx, k
-						mov al, BYTE PTR [OperatorList+ecx]
-						mov ecx, j
-						add ecx, k
-						mov bl, BYTE PTR [recvBuffer+ecx]
-					.ENDW
-					.IF al == 32 ; j: position of operator, k: op length
-						INVOKE AddBrace, ADDR recvBuffer, j, k
-						inc j
-					.ENDIF
-					pop eax
-				.ENDIF
-				inc j
+	mov bl, BYTE PTR [recvBuffer]
+	.WHILE bl != 0
+		mov j, 0
+		mov al, BYTE PTR [OperatorList]
+		.WHILE al != 0
+			.IF bl == al && al != 32
+				pushad
+				mov k, 1
+				mov ecx, i
+				inc ecx
+				mov al, BYTE PTR [OperatorList+ecx]
 				mov ecx, j
+				inc ecx 
 				mov bl, BYTE PTR [recvBuffer+ecx]
-			.ENDW
-		.ENDIF
+				.WHILE al == bl && al != 0 && bl != 0 && al != 32
+					inc k
+					mov ecx, j
+					add ecx, k
+					mov al, BYTE PTR [OperatorList+ecx]
+					mov ecx, i
+					add ecx, k
+					mov bl, BYTE PTR [recvBuffer+ecx]
+				.ENDW
+				.IF al == 32 ; i: position of operator, k: op length
+					INVOKE AddBrace, ADDR recvBuffer, i, k
+					popad
+					inc i
+					jmp restart
+				.ENDIF
+				popad
+			.ENDIF
+			inc j
+			mov ecx, j
+			mov al, BYTE PTR [OperatorList+ecx]
+		.ENDW
+		restart:
 		inc i
 		mov ecx, i
-		mov al, BYTE PTR [OperatorList+ecx]
+		mov bl, BYTE PTR [recvBuffer+ecx]
 	.ENDW
 
 ; step 3: move operators to the right and remove all the braces
@@ -310,6 +341,16 @@ PolishNotation PROC
 		inc ecx
 		mov al, BYTE PTR [OperatorList+ecx]
 	.ENDW
+	mov ecx, 0
+	mov al, BYTE PTR [recvBuffer]
+	.WHILE al != 0
+		.IF al == 40 || al == 41
+			INVOKE RemoveChar, ADDR recvBuffer, ecx
+			dec ecx
+		.ENDIF
+		inc ecx
+		mov al, BYTE PTR [recvBuffer+ecx]
+	.ENDW
 	ret
 PolishNotation ENDP
 
@@ -328,7 +369,14 @@ CalculateResult PROC
 ;-----------------------------------------------------
 	inc CalCount
 	INVOKE memset, ADDR ansBuffer, 0, MaxBufferSize
-	INVOKE PolishNotation
+	mov ecx, 0
+	.WHILE ecx < OperatorTableHeight
+		push ecx
+		INVOKE UpdateOperator, ecx
+		INVOKE PolishNotation
+		pop ecx
+		inc ecx
+	.ENDW
 	INVOKE CalculatePN
 	ret
 CalculateResult ENDP
