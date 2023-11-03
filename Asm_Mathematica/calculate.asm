@@ -352,10 +352,16 @@ PolishNotation PROC
 PolishNotation ENDP
 
 ;-----------------------------------------------------
+CalculatePlusMinus PROC
+	RET
+CalculatePlusMinus ENDP
+
+;-----------------------------------------------------
 CalculatePN PROC
 ; After treated by PolishNotation PROC, calculate answer
 ;-----------------------------------------------------
 	INVOKE strcpy, ADDR ansBuffer, ADDR recvBuffer
+	
 	ret
 CalculatePN ENDP
 
