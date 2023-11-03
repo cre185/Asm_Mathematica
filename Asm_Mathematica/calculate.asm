@@ -17,6 +17,7 @@ include         shell32.inc
 includelib      shell32.lib
 include  		calculate.inc
 include			macro.inc
+include			mathStack.inc
 strncpy			PROTO C :ptr sbyte, :ptr sbyte, :DWORD
 strcpy			PROTO C :ptr sbyte, :ptr sbyte
 strcat			PROTO C :ptr sbyte, :ptr sbyte
@@ -326,6 +327,7 @@ PolishNotation PROC
 					.ENDW
 					inc ecx
 					INVOKE InsertChar, ADDR recvBuffer, ecx, bl
+					INVOKE InsertChar, ADDR recvBuffer, ecx, 32
 					popad
 					; INVOKE RemoveChar, ADDR recvBuffer, ecx
 					mov recvBuffer[ecx], 32

@@ -51,9 +51,9 @@ ErrorTitle  BYTE "Error",0
 WindowName  BYTE "Asm Mathematica",0
 className   BYTE "ASMWin",0
 
-fileMsg    BYTE "文件",0
-subMsg     BYTE "新建",0
-sub2ndMsg  BYTE "打开",0
+fileMsg    BYTE "File",0
+subMsg     BYTE "New",0
+sub2ndMsg  BYTE "Open",0
 
 msg	      MSGStruct <>
 winRect   RECT <>
@@ -211,6 +211,5 @@ ErrorHandler ENDP
 
 ; INVOKE MessageBox, NULL, ADDR PopupTitle, ADDR PopupText, MB_OK
 
-; test git push
 
 END WinMain
