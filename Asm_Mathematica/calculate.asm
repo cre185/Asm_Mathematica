@@ -42,6 +42,10 @@ public FailureSign
 CalCount DWORD 0
 public CalCount
 
+calculationStack BYTE MaxMathStackSize DUP(0)
+calculationStackTop DWORD calculationStack
+public calculationStack, calculationStackTop
+
 .code
 ;-----------------------------------------------------
 ParseFailure PROC
@@ -360,8 +364,54 @@ CalculatePlusMinus ENDP
 CalculatePN PROC
 ; After treated by PolishNotation PROC, calculate answer
 ;-----------------------------------------------------
-	INVOKE strcpy, ADDR ansBuffer, ADDR recvBuffer
-	
+	LOCAL currentInt: QWORD, currentFloat: QWORD
+	LOCAL ansBufferLoc: DWORD, ansBufferStartingLoc: DWORD
+	INVOKE strcpy, ADDR ansBuffer, ADDR recvBuffer ; load the recvBuffer into ansBuffer
+	MOV ansBufferLoc, offset ansBuffer
+	; for each elem seperated by space:
+	; if is operand, push into stack
+	; if is operator, pop operands in accordance with the operator, then calc and push
+	; finally: pop the last operand, which is the answer
+	L1:	
+		; for each elem:
+		; loop to search:
+		.IF [ansBufferLoc] == 0 ; end of the elem
+			JMP END_LOOP
+		.ENDIF
+		MOV eax, ansBufferLoc
+		MOV ansBufferStartingLoc, eax ; save the starting location of the elem
+		L2:
+			.IF BYTE PTR [ansBufferLoc] == 0 ; end of the elem
+				JMP L3
+			.ENDIF
+			.IF BYTE PTR [ansBufferLoc] == 32 ; end of the elem
+				JMP L3
+			.ENDIF
+			; else:
+			INC ansBufferLoc
+			JMP L2
+		L3:
+		; now ansBufferLoc points to the end() of the elem
+		; and ansBufferStartingLoc points to the start() of the elem
+		; so the elem is [ansBufferStartingLoc, ansBufferLoc)
+		; now we need to determine whether it is an operand or an operator
+		
+		INVOKE IsOperator, ADDR ansBuffer, ansBufferStartingLoc
+		; if eax == 0, then it is an operand
+		.IF eax == 0
+			; TODO: push the operand into stack
+			JMP L4
+		.ENDIF
+		; else it is an operator
+		; TODO: pop operands in accordance with the operator, then calc and push
+		L4:
+		INC ansBufferLoc
+		JMP L1
+		
+
+
+
+	END_LOOP:
 	ret
 CalculatePN ENDP
 
