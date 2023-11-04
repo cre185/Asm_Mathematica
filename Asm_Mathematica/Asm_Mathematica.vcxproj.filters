@@ -27,6 +27,9 @@
     <MASM Include="mathStack.asm">
       <Filter>源文件</Filter>
     </MASM>
+    <MASM Include="longInt.asm">
+      <Filter>源文件</Filter>
+    </MASM>
   </ItemGroup>
   <ItemGroup>
     <None Include="calculate.inc">
@@ -42,6 +45,9 @@
       <Filter>头文件</Filter>
     </None>
     <None Include="mathStack.inc">
+      <Filter>头文件</Filter>
+    </None>
+    <None Include="longInt.inc">
       <Filter>头文件</Filter>
     </None>
   </ItemGroup>

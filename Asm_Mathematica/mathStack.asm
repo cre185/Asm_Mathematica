@@ -54,10 +54,14 @@ TopType PROC,
     topAddr: DWORD, typeAddr: DWORD
 ; put the type of stack top to typeAddr
 ;---------------------------------------------------------------------------
+    push ebx
+    push eax
     MOV ebx, topAddr
     DEC ebx ; minus 1, since we only uses a BYTE to store the type
     MOV al, [ebx] ; get the type no.
     MOV BYTE PTR [typeAddr], al ; put the type no. into the buffer
+    pop eax
+    pop ebx
     RET
 TopType ENDP
 
@@ -66,10 +70,14 @@ TopSize PROC,
     topAddr: DWORD, sizeAddr: DWORD
 ; put the size of stack top to sizeAddr
 ;---------------------------------------------------------------------------
+    push ebx
+    push eax
     MOV ebx, topAddr
     SUB ebx, 3 ; minus 3, since we only uses a WORD to store the size, and a BYTE to store the type
     MOV ax, [ebx] ; get the size
     MOV WORD PTR [sizeAddr], ax ; put the size into the buffer
+    pop eax
+    pop ebx
     RET
 TopSize ENDP
 
@@ -80,6 +88,10 @@ TopData PROC,
 ;---------------------------------------------------------------------------
     LOCAL dataSize: WORD
     INVOKE TopSize, topAddr, ADDR dataSize ; put the size of stack top to dataSize
+    push esi
+    push edi
+    push eax
+    push ecx
     MOV esi, topAddr
     SUB esi, 3
     MOV eax, 0
@@ -90,6 +102,10 @@ TopData PROC,
     MOV cx, dataSize ; ecx is the size of data body
     CLD ; clear the direction flag, making the copy process from low address to high address
     REP MOVSB ; copy from esi to edi, ecx bytes; i.e. copy the data body to the buffer, dataSize times
+    pop ecx
+    pop eax
+    pop edi
+    pop esi
     RET
 TopData ENDP
 
@@ -100,10 +116,12 @@ TopPop PROC,
 ;---------------------------------------------------------------------------
     LOCAL dataSize: WORD
     INVOKE TopSize, [topAddrAddr], ADDR dataSize ; put the size of stack top to dataSize
+    push ebx
     MOV bx, WORD PTR [topAddrAddr]
     SUB bx, 3
     SUB bx, dataSize ; ebx points to the data body
     MOV WORD PTR [topAddrAddr], bx ; put the address of data body into topAddr
+    pop ebx
     RET
 TopPop ENDP
 
@@ -113,6 +131,10 @@ TopPush PROC,
 ; push data into stack top, and put new top address into topAddrAddr
 ;---------------------------------------------------------------------------
     LOCAL dataSize: WORD
+    push eax
+    push ecx
+    push esi
+    push edi
     MOV ax, WORD PTR [sizeAddr]
     MOV dataSize, ax 
     ; step1: put data into stack top
@@ -141,6 +163,10 @@ TopPush PROC,
     CLD
     REP MOVSB
     ADD [topAddrAddr], 1 ; update the top addr
+    pop edi
+    pop esi
+    pop ecx
+    pop eax
     RET
 TopPush ENDP
 

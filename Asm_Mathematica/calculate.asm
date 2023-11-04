@@ -400,17 +400,20 @@ CalculatePN PROC
 		; if eax == 0, then it is an operand
 		.IF eax == 0
 			; TODO: push the operand into stack
+			.IF 1>0
+				; TODO: support more types
+				; push the operand into stack
+				INVOKE TopPush, ADDR calculationStackTop, ADDR ansBuffer + ansBufferStartingLoc, 8, TYPE_INT
 			JMP L4
 		.ENDIF
 		; else it is an operator
 		; TODO: pop operands in accordance with the operator, then calc and push
+		.IF 1>0
+			; TODO: support more ops
+			; pop operands
 		L4:
 		INC ansBufferLoc
 		JMP L1
-		
-
-
-
 	END_LOOP:
 	ret
 CalculatePN ENDP

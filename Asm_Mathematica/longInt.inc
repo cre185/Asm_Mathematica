@@ -1,0 +1,14 @@
+IFNDEF LONGINT_INC
+LONGINT_INC equ <1>
+
+StrToLong PROTO
+LongToStr PROTO
+
+LongAdd PROTO
+LongSub PROTO
+
+LongMul PROTO
+LongDiv PROTO
+
+
+ENDIF
