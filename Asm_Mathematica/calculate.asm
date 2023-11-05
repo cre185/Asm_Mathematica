@@ -367,7 +367,7 @@ CalculatePN PROC
 	LOCAL currentInt: QWORD, currentFloat: QWORD
 	LOCAL ansBufferLoc: DWORD, ansBufferStartingLoc: DWORD
 	INVOKE strcpy, ADDR ansBuffer, ADDR recvBuffer ; load the recvBuffer into ansBuffer
-	MOV ansBufferLoc, offset ansBuffer
+	mov ecx, 0
 	; for each elem seperated by space:
 	; if is operand, push into stack
 	; if is operator, pop operands in accordance with the operator, then calc and push
@@ -375,20 +375,19 @@ CalculatePN PROC
 	L1:	
 		; for each elem:
 		; loop to search:
-		.IF [ansBufferLoc] == 0 ; end of the elem
+		.IF [ansBuffer+ecx] == 0 ; end of the elem
 			JMP END_LOOP
 		.ENDIF
-		MOV eax, ansBufferLoc
-		MOV ansBufferStartingLoc, eax ; save the starting location of the elem
+		MOV ansBufferStartingLoc, ecx ; save the starting location of the elem
 		L2:
-			.IF BYTE PTR [ansBufferLoc] == 0 ; end of the elem
+			.IF BYTE PTR [ansBuffer+ecx] == 0 ; end of the elem
 				JMP L3
 			.ENDIF
-			.IF BYTE PTR [ansBufferLoc] == 32 ; end of the elem
+			.IF BYTE PTR [ansBuffer+ecx] == 32 ; end of the elem
 				JMP L3
 			.ENDIF
 			; else:
-			INC ansBufferLoc
+			INC ecx
 			JMP L2
 		L3:
 		; now ansBufferLoc points to the end() of the elem
