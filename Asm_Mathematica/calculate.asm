@@ -396,8 +396,6 @@ CalculatePlus PROC
 	; Push
 	INVOKE TopPush, ADDR calculationStackTop, sumLongAddr, sumSizeAddr, type1Addr
 
-	INVOKE
-
 	pop eax
 	RET
 CalculatePlus ENDP
@@ -442,21 +440,23 @@ CalculatePN PROC
 		; if eax == 0, then it is an operand
 		.IF eax == 0
 			; TODO: push the operand into stack
-			.IF 1>0
+			; .IF 
 				; TODO: support more types
 				; push the operand into stack
 				INVOKE TopPush, ADDR calculationStackTop, ADDR ansBuffer + ansBufferStartingLoc, 8, TYPE_INT
+			; .ENDIF
 			JMP L4
 		.ENDIF
 		; else it is an operator
 		; TODO: pop operands in accordance with the operator, then calc and push
-		.IF 1>0
+		; .IF
 			; TODO: support more ops
 			; pop operands
-			.IF 1>0
+			; .IF 
 				; TODO: more operands
 				INVOKE CalculatePlus
-			.ENDIF
+			; .ENDIF
+		; .ENDIF
 		L4:
 		INC ansBufferLoc
 		JMP L1
