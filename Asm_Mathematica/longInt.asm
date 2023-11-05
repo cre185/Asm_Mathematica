@@ -38,24 +38,32 @@ LongAdd PROC,
     longAddr1: DWORD, longAddr2: DWORD, ansLongAddr: DWORD
 ; This procedure adds two QWORDs, answer is in ansLongAddr.
 ;---------------------------------------------------------------------------
-    push eax
-    ; clear the answer
-    MOV ansLongAddr, 0 
-    MOV ansLongAddr + 4, 0 
-    TEST eax, eax
-    MOV eax, [longAddr1 + 4] ; the lower 32 bits of longAddr1
-    ADD eax, [longAddr2 + 4] ; ................. of longAddr2
-    JNC NO_CARRY
-    ; if carry, then add 1 to the higher 32 bits
-    INC [ansLongAddr + 4]
-    NO_CARRY:
-    MOV [ansLongAddr + 4], eax ; store the lower 32 bits of ansLongAddr
+    LOCAL Increase:DWORD
+    pushad
 
-    MOV eax, [longAddr1] ; the higher 32 bits of longAddr1
-    ADD eax, [longAddr2] ; the higher 32 bits of longAddr2
-    ADD eax, [ansLongAddr] ; add the carry
-    MOV [ansLongAddr], eax ; store the higher 32 bits of ansLongAddr
-    pop eax
+    mov Increase, 0
+    ; clear the answer
+    mov eax, [ansLongAddr]
+    MOV DWORD PTR [eax], 0 
+    MOV DWORD PTR [eax+4], 0 
+    mov ebx, [longAddr1]
+    MOV eax, [ebx + 4] ; the lower 32 bits of longAddr1
+    mov ebx, [longAddr2]
+    ADD eax, [ebx + 4] ; ................. of longAddr2
+    .IF CARRY?
+        INC Increase
+    .ENDIF
+    mov ebx, [ansLongAddr]
+    MOV [ebx+4], eax ; store the lower 32 bits of ansLongAddr
+
+    mov ebx, [longAddr1]
+    MOV eax, [ebx] ; the higher 32 bits of longAddr1
+    mov ebx, [longAddr2]
+    ADD eax, [ebx] ; the higher 32 bits of longAddr2
+    ADD eax, Increase ; add the carry
+    mov ebx, [ansLongAddr]
+    MOV [ebx], eax ; store the higher 32 bits of ansLongAddr
+    popad
     RET
 LongAdd ENDP
 
@@ -98,32 +106,34 @@ LongMaskLastNBits PROC,
     longAddr: DWORD, n: DWORD
 ; This procedure masks the last n bits of a QWORD.
 ;---------------------------------------------------------------------------
-    push eax
-    push ecx
+    pushad
     ; a simple method: 111...1 (n 1's)  = 1<<n - 1
     .IF n < 32
         ; put 1 in longAddr + 4 's higher n bits
-        MOV [longAddr], 0
-        MOV [longAddr + 4], 0 ; set to 64-bit 0's
+        mov ebx, [longAddr]
+        MOV DWORD PTR [ebx], 0
+        MOV DWORD PTR [ebx+4], 0 ; set to 64-bit 0's
         MOV eax, 1
         MOV ecx, n
         SHL eax, cl
         DEC eax
-        MOV [longAddr + 4], eax
+        mov ebx, [longAddr]
+        MOV [ebx+4], eax
     .ELSE
         ; n >= 32
         ; put 1 in longAddr + 4
-        MOV [longAddr + 4], 0FFFFFFFFh
-        MOV [longAddr], 0
+        mov ebx, [longAddr]
+        MOV DWORD PTR [ebx+4], 0FFFFFFFFh
+        MOV DWORD PTR [ebx], 0
         MOV eax, 1
         MOV ecx, n
         SUB ecx, 32
         SHL eax, cl
         DEC eax
-        MOV [longAddr], eax
+        mov ebx, [longAddr]
+        MOV [ebx], eax
     .ENDIF
-    pop ecx
-    pop eax
+    popad
     RET
 LongMaskLastNBits ENDP
 
@@ -132,75 +142,42 @@ LongMaskNotLastNBits PROC,
     longAddr: DWORD, n: DWORD
 ; This procedure masks the not-last n bits of a QWORD.
 ;---------------------------------------------------------------------------
-    push eax
+    pushad
     INVOKE LongMaskLastNBits, longAddr, n
     MOV eax, [longAddr]
     NOT eax
     MOV [longAddr], eax
     MOV eax, [longAddr + 4]
     NOT eax
-    MOV [longAddr + 4], eax
-    pop eax
+    mov ebx, [longAddr]
+    MOV [ebx+4], eax
+    popad
     RET
 LongMaskNotLastNBits ENDP
 
 ;---------------------------------------------------------------------------
 LongLShift PROC,
-    longAddr: DWORD, shiftCount: DWORD, ansLongAddr: DWORD
+    longAddr: DWORD, shiftCount: DWORD
 ; This procedure shifts a QWORD to the left by shiftCount bits.
 ;---------------------------------------------------------------------------
     ; use rotate left
     ; bits rotated to the right 
-    LOCAL tmp1: DWORD, tmp1Addr: DWORD, tmp2: DWORD, tmp2Addr: DWORD
-    LOCAL tmpLong: QWORD, tmpLongAddr: DWORD
-    push eax
-    push ecx
-    push edx
-    LEA eax, tmp1
-    MOV tmp1Addr, eax
-    LEA eax, tmp2
-    MOV tmp2Addr, eax
-    LEA eax, tmpLong
-    MOV tmpLongAddr, eax
-    .IF shiftCount < 32
-        ; shiftCount < 32
-        ; for the right 32 bits:
-        ; ROL shiftCount bits, then:
-        ; INVOKE LongMaskLastNbits, longAddr, shiftCount   to get the last shiftCount bits
-        ; then turn the last shiftCount bits to 0
-        ; for the left 32 bits:
-        ; SHL the higher 32 bits by shiftCount
-        ; copy the last shiftCount bits to the higher 32 bits (via OR)
-        MOV eax, [longAddr + 4]
-        MOV ecx, shiftCount
-        ROL eax, cl
-        INVOKE LongMaskNotLastNBits, tmpLongAddr, shiftCount
-        MOV edx, eax
-        AND edx, [tmpLongAddr + 4] ; edx = the last 32 bits of new longAddr
-        MOV [ansLongAddr + 4], edx
-        INVOKE LongMaskLastNBits, tmpLongAddr, shiftCount
-        MOV edx, eax
-        AND edx, [tmpLongAddr] ; edx = the part that need to be added to the higher 32 bits
-        MOV eax, [longAddr]
-        SHL eax, cl
-        OR eax, edx
-        MOV[ansLongAddr], eax
-    .ELSE
-        ; put the last 64-shiftCount bits to the higher 32 bits
-        MOV ecx, 64
-        SUB ecx, shiftCount ; ecx = 64 - shiftCount
-        INVOKE LongMaskNotLastNBits, tmpLongAddr, ecx
-        MOV edx, [longAddr + 4]
-        AND edx, [tmpLongAddr + 4]
-        MOV ecx, shiftCount
-        SUB ecx, 32
-        SHL edx, cl
-        MOV [ansLongAddr], edx
-        MOV [ansLongAddr + 4], 0
-    .ENDIF
-    pop edx
-    pop ecx
-    pop eax
+    pushad
+    mov ecx, shiftCount
+    mov ebx, [longAddr]
+    .WHILE ecx > 0
+        mov eax, [ebx]
+        mov edx, [ebx+4]
+        shl eax, 1
+        shl edx, 1
+        .IF OVERFLOW?
+            inc eax
+        .ENDIF
+        mov [ebx], eax
+        mov [ebx+4], edx
+        dec ecx
+    .ENDW
+    popad
     RET
 LongLShift ENDP
 
@@ -225,75 +202,74 @@ LongAssign PROC,
     longAddr1: DWORD, longAddr2: DWORD
 ; This procedure assigns longAddr2 to longAddr1.
 ;---------------------------------------------------------------------------
-    push eax
-    MOV eax, [longAddr2]
-    MOV [longAddr1], eax
-    MOV eax, [longAddr2 + 4]
-    MOV [longAddr1 + 4], eax
-    pop eax
+    pushad
+    mov ebx, [longAddr2]
+    MOV eax, [ebx]
+    mov ebx, [longAddr1]
+    MOV [ebx], eax
+    mov ebx, [longAddr2]
+    MOV eax, [ebx + 4]
+    mov ebx, [longAddr1]
+    MOV [ebx + 4], eax
+    popad
     RET
 LongAssign ENDP
 
 ;---------------------------------------------------------------------------
 LongMul PROC,
-    longAddr1: DWORD, longAddr2: DWORD, ansLongAddr: DWORD
-; This procedure multiplies two QWORDs, answer is in ansLongAddr.
+    longAddr1: DWORD, longAddr2: DWORD
+; This procedure multiplies two QWORDs.
 ;---------------------------------------------------------------------------
-    ; for every bit in longAddr2, if it is 1, then add longAddr1 << i to ansLongAddr
-    LOCAL i: DWORD, tmpLong: QWORD, tmpLongAddr: DWORD, sumLong: QWORD, sumLongAddr: DWORD, tmpLong2: QWORD, tmpLong2Addr: DWORD
-    push eax
-    LEA eax, tmpLong
-    MOV tmpLongAddr, eax
-    LEA eax, sumLong
-    MOV sumLongAddr, eax
-    LEA eax, tmpLong2
-    MOV tmpLong2Addr, eax
-    MOV i, 0 ; start from the lowest bit
-    MOV [ansLongAddr], 0
-    MOV [ansLongAddr + 4], 0 ; set to 64-bit 0's
-    MOV [sumLongAddr], 0
-    MOV [sumLongAddr + 4], 0 ; set to 64-bit 0's
-    .WHILE i < 64
-        ; step 1: check if the i-th bit of longAddr2 is 1
-        MOV [tmpLongAddr], 0
-        MOV [tmpLongAddr + 4], 1 ; set to 63 0's and one 1
-        INVOKE LongLShift, tmpLongAddr, i, tmpLong2Addr
-        INVOKE LongAssign, tmpLongAddr, tmpLong2Addr
-        INVOKE LongAnd, tmpLongAddr, longAddr2, tmpLong2Addr
-        ; step 2: if the i-th bit is 1, then add longAddr1 << i to ansLongAddr
-        .IF i < 32
-            ; 1 in lower 32 bits
-            MOV eax, [tmpLong2Addr + 4]
-            TEST eax, eax
-            JZ NO_ADD
-            ; if the i-th bit is 1, then add longAddr1 << i to ansLongAddr
-            INVOKE LongLShift, longAddr1, i, tmpLongAddr
-            INVOKE LongAdd, sumLongAddr, tmpLongAddr, ansLongAddr
-            INVOKE LongAssign, sumLongAddr, ansLongAddr
-            NO_ADD:
-        .ELSE
-            ; 1 in higher 32 bits
-            MOV eax, [tmpLong2Addr]
-            TEST eax, eax
-            JZ NO_ADD2
-            ; if the i-th bit is 1, then add longAddr1 << i to ansLongAddr
-            INVOKE LongLShift, longAddr1, i, tmpLongAddr
-            INVOKE LongAdd, sumLongAddr, tmpLongAddr, ansLongAddr
-            INVOKE LongAssign, sumLongAddr, ansLongAddr
-            NO_ADD2:
-        .ENDIF
-        INC i
-    .ENDW
-    ; reaching here, ansLongAddr is the answer
-    pop eax
+    pushad
+    mov esi, [longAddr1]
+    mov edi, [longAddr2]
+    mov eax, [esi+4]
+    mov edx, [edi+4]
+    mul edx
+    mov ebx, eax ; low
+    mov ecx, edx ; high
+
+    mov eax, [esi]
+    mov edx, [edi+4]
+    mul edx
+    add ecx, eax
+    mov eax, [esi+4]
+    mov edx, [edi]
+    mul edx
+    add ecx, eax
+
+    mov [esi], ecx
+    mov [esi+4], ebx
+    popad
     RET
 LongMul ENDP
 
 ;---------------------------------------------------------------------------
 LongDiv PROC,
-    longAddr1: DWORD, longAddr2: DWORD, ansLongAddr: DWORD, remainderLongAddr: DWORD
-; This procedure divides two QWORDs, answer is in ansLongAddr, remainder is in remainderLongAddr.
+    longAddr1: DWORD, longAddr2: DWORD
+; This procedure divides two QWORDs, answer is in longAddr1, remainder is in longAddr2.
 ;---------------------------------------------------------------------------
+    pushad
+    mov esi, [longAddr1]
+    mov edi, [longAddr2]
+    mov eax, [esi+4]
+    mov edx, [edi+4]
+    mul edx
+    mov ebx, eax ; low
+    mov ecx, edx ; high
+
+    mov eax, [esi]
+    mov edx, [edi+4]
+    mul edx
+    add ecx, eax
+    mov eax, [esi+4]
+    mov edx, [edi]
+    mul edx
+    add ecx, eax
+
+    mov [esi], ecx
+    mov [esi+4], ebx
+    popad
     RET
 LongDiv ENDP
 
@@ -322,10 +298,10 @@ StrToLong PROC,
     MOV DWORD PTR [eax+4], 0
     MOV i, 0
     mov eax, [strAddr]
-    mov ebx, [i]
+    mov ebx, i
     ; search for the end of str, i.e. where the null terminator is
     .WHILE BYTE PTR [eax + ebx] != 0 && BYTE PTR [eax + ebx] != 32
-        INC ebx
+        inc ebx
     .ENDW
     mov i, ebx
     .IF i==0
@@ -334,30 +310,29 @@ StrToLong PROC,
         MOV [longAddr + 4], 0
     .ELSE
         ; non-empty
-        DEC i ; i is the index of the last char
         ; for each char, if is a digit , add (ch - '0') * 10^digit to tmpLong
         ; then dec i and inc digit
-        .WHILE i != -1
+        mov ecx, 0
+        .WHILE ecx < i
             ; for each char within
             ; tmpLong = (ch - '0') * 10^digit
             mov esi, [strAddr]
-            add esi, [i]
+            add esi, ecx
+            mov eax, 0
             MOV al, BYTE PTR [esi] ; the i-th char
             SUB al, '0'
             lea esi, tmpLong
             MOV DWORD PTR [esi], 0
             MOV DWORD PTR [esi+4], eax
-            INVOKE LongMul, tmpLongAddr, power_of_10Addr, tmpLong2Addr
-            INVOKE LongAdd , sumLongAddr, tmpLong2Addr, longAddr
-            INVOKE LongAssign, sumLongAddr, longAddr
             ; update power_of_10
-            lea eax, tmpLong
+            lea eax, power_of_10
             MOV DWORD PTR [eax], 0
             MOV DWORD PTR [eax+4], 10
-            INVOKE LongMul, power_of_10Addr, tmpLongAddr, tmpLong2Addr
-            INVOKE LongAssign, power_of_10Addr, tmpLong2Addr
+            INVOKE LongMul, sumLongAddr, power_of_10Addr
+            INVOKE LongAdd, sumLongAddr, tmpLongAddr, longAddr
+            INVOKE LongAssign, sumLongAddr, longAddr
             ; update i
-            DEC i
+            inc ecx
         .ENDW
     .ENDIF
     pop eax
@@ -366,9 +341,31 @@ StrToLong ENDP
 
 ;---------------------------------------------------------------------------
 LongToStr PROC,
-    longAddr: DWORD, strAddr: DWORD
+    longAddr:DWORD
 ; This procedure converts a QWORD into a string.
 ;---------------------------------------------------------------------------
+    LOCAL tmpStr[MaxBufferSize]:BYTE
+    pushad
+    mov ebx, [longAddr]
+    mov edx, [ebx] ; high
+    mov eax, [ebx+4] ; low
+    mov ecx, 0
+    lea esi, tmpStr
+    .WHILE eax > 0
+        mov edi, 10
+        div edi
+        add dl, '0'
+        push eax
+        INVOKE InsertChar, esi, 0, dl
+        pop eax
+        mov edx, 0
+        inc ecx
+    .ENDW
+    push ecx
+    INVOKE memset, longAddr, 0, MaxBufferSize
+    pop ecx
+    INVOKE strncpy, longAddr, esi, ecx
+    popad
     RET
 LongToStr ENDP
 END

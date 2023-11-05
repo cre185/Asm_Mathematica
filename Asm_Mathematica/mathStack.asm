@@ -58,14 +58,13 @@ TopType PROC,
     typeAddr: DWORD
 ; put the type of stack top to typeAddr
 ;---------------------------------------------------------------------------
-    push ebx
-    push eax
+    pushad
     MOV ebx, calculationStackTop
     DEC ebx ; minus 1, since we only uses a BYTE to store the type
-    MOV al, [ebx] ; get the type no.
-    MOV BYTE PTR [typeAddr], al ; put the type no. into the buffer
-    pop eax
-    pop ebx
+    MOV al, BYTE PTR [ebx] ; get the type no.
+    mov edx, [typeAddr]
+    MOV BYTE PTR [edx], al ; put the type no. into the buffer
+    popad
     RET
 TopType ENDP
 
@@ -89,13 +88,21 @@ TopData PROC,
     dataAddr: DWORD
 ; put the data of stack top to dataAddr
 ;---------------------------------------------------------------------------
-    LOCAL dataSize: WORD
+    LOCAL dataSize:WORD, stackData:DWORD
     pushad
     INVOKE TopSize, ADDR dataSize ; put the size of stack top to dataSize
     mov eax, calculationStackTop
     sub ax, dataSize
     sub eax, 3
-    INVOKE strncpy, dataAddr, eax, dataSize
+    mov stackData, eax
+    mov ecx, 0
+    .WHILE cx < dataSize
+        mov ebx, [stackData]
+        mov al, BYTE PTR [ebx+ecx]
+        mov ebx, [dataAddr]
+        mov BYTE PTR [ebx+ecx], al
+        inc ecx
+    .ENDW
     popad
     RET
 TopData ENDP
@@ -123,7 +130,14 @@ TopPush PROC,
 ;---------------------------------------------------------------------------
     pushad
     ; step1: put data into stack top
-    INVOKE strncpy, calculationStackTop, dataAddr, dataSize
+    mov ecx, 0
+    .WHILE cx < dataSize
+        mov ebx, [dataAddr]
+        mov al, BYTE PTR [ebx+ecx]
+        mov ebx, [calculationStackTop]
+        mov BYTE PTR [ebx+ecx], al
+        inc ecx
+    .ENDW
     MOV eax, 0
     MOV ax, dataSize
     ADD calculationStackTop, eax ; update stack top

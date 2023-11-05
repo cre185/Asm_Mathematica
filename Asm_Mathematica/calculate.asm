@@ -374,6 +374,10 @@ CalculatePlus PROC
 	MOV long2Addr, eax
 	LEA eax, sumLong
 	MOV sumLongAddr, eax
+
+	mov type1, 0
+	mov type2, 0
+
 	; TODO: more types
 	INVOKE TopType, type1Addr
 	INVOKE TopData, long1Addr
@@ -392,6 +396,50 @@ CalculatePlus PROC
 	pop eax
 	RET
 CalculatePlus ENDP
+
+;-----------------------------------------------------
+CalculateMul PROC
+; Calculate the top two elements in the stack and push the answer back
+;-----------------------------------------------------
+	LOCAL type1:DWORD, type2:DWORD
+	LOCAL type1Addr:DWORD, type2Addr:DWORD
+	LOCAL long1:QWORD, long2:QWORD
+	LOCAL long1Addr:DWORD, long2Addr:DWORD
+	LOCAL sumLong:QWORD, sumLongAddr:DWORD
+	push eax
+	LEA eax, type1
+	MOV type1Addr, eax
+	LEA eax, type2
+	MOV type2Addr, eax
+	LEA eax, long1
+	MOV long1Addr, eax
+	LEA eax, long2
+	MOV long2Addr, eax
+	LEA eax, sumLong
+	MOV sumLongAddr, eax
+
+	mov type1, 0
+	mov type2, 0
+
+	; TODO: more types
+	INVOKE TopType, type1Addr
+	INVOKE TopData, long1Addr
+	INVOKE TopPop
+
+	INVOKE TopType, type2Addr
+	INVOKE TopData, long2Addr
+	INVOKE TopPop
+
+	; Add
+	INVOKE LongMul, long1Addr, long2Addr
+	INVOKE LongAssign, sumLongAddr, long1Addr
+
+	; Push
+	INVOKE TopPush, sumLongAddr, 8, TYPE_INT
+
+	pop eax
+	RET
+CalculateMul ENDP
 
 ;-----------------------------------------------------
 CalculatePN PROC
@@ -460,10 +508,13 @@ CalculatePN PROC
 		; .IF
 			; TODO: support more ops
 			; pop operands
-			; .IF 
-				; TODO: more operands
+			mov eax, offset ansBuffer
+			add eax, ansBufferStartingLoc
+			.IF BYTE PTR [eax] == 43
 				INVOKE CalculatePlus
-			; .ENDIF
+			.ELSEIF BYTE PTR [eax] == 42
+				INVOKE CalculateMul
+			.ENDIF
 		; .ENDIF
 		L4:
 		mov ecx, ansBufferLen
@@ -472,6 +523,7 @@ CalculatePN PROC
 		JMP L1
 	END_LOOP:
 	INVOKE TopData, ADDR ansBuffer
+	INVOKE LongToStr, ADDR ansBuffer
 	ret
 CalculatePN ENDP
 
