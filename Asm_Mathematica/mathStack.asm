@@ -25,6 +25,10 @@ strlen			PROTO C :ptr sbyte
 
 .data
 
+calculationStack BYTE MaxMathStackSize DUP(48)
+calculationStackTop DWORD calculationStack
+public calculationStack, calculationStackTop
+
 .code
 ;---------------------------------------------------------------------------
 ; in this source file we mainly wish to manage stack in a more accurate way.
@@ -51,12 +55,12 @@ strlen			PROTO C :ptr sbyte
 
 ;---------------------------------------------------------------------------
 TopType PROC,
-    topAddr: DWORD, typeAddr: DWORD
+    typeAddr: DWORD
 ; put the type of stack top to typeAddr
 ;---------------------------------------------------------------------------
     push ebx
     push eax
-    MOV ebx, topAddr
+    MOV ebx, calculationStackTop
     DEC ebx ; minus 1, since we only uses a BYTE to store the type
     MOV al, [ebx] ; get the type no.
     MOV BYTE PTR [typeAddr], al ; put the type no. into the buffer
@@ -67,106 +71,75 @@ TopType ENDP
 
 ;---------------------------------------------------------------------------
 TopSize PROC,
-    topAddr: DWORD, sizeAddr: DWORD
+    sizeAddr: DWORD
 ; put the size of stack top to sizeAddr
 ;---------------------------------------------------------------------------
-    push ebx
-    push eax
-    MOV ebx, topAddr
+    pushad
+    mov ebx, calculationStackTop
     SUB ebx, 3 ; minus 3, since we only uses a WORD to store the size, and a BYTE to store the type
-    MOV ax, [ebx] ; get the size
-    MOV WORD PTR [sizeAddr], ax ; put the size into the buffer
-    pop eax
-    pop ebx
+    MOV ax, WORD PTR [ebx] ; get the size
+    mov ebx, [sizeAddr]
+    MOV WORD PTR [ebx], ax ; put the size into the buffer
+    popad
     RET
 TopSize ENDP
 
 ;---------------------------------------------------------------------------
 TopData PROC,
-    topAddr: DWORD, dataAddr: DWORD
+    dataAddr: DWORD
 ; put the data of stack top to dataAddr
 ;---------------------------------------------------------------------------
     LOCAL dataSize: WORD
-    INVOKE TopSize, topAddr, ADDR dataSize ; put the size of stack top to dataSize
-    push esi
-    push edi
-    push eax
-    push ecx
-    MOV esi, topAddr
-    SUB esi, 3
-    MOV eax, 0
-    MOV ax, dataSize ; now eax = dataSize
-    SUB esi, eax ; esi points to the data body
-    MOV edi, dataAddr ; edi points to the buffer
-    MOV ecx, 0
-    MOV cx, dataSize ; ecx is the size of data body
-    CLD ; clear the direction flag, making the copy process from low address to high address
-    REP MOVSB ; copy from esi to edi, ecx bytes; i.e. copy the data body to the buffer, dataSize times
-    pop ecx
-    pop eax
-    pop edi
-    pop esi
+    pushad
+    INVOKE TopSize, ADDR dataSize ; put the size of stack top to dataSize
+    mov eax, calculationStackTop
+    sub ax, dataSize
+    sub eax, 3
+    INVOKE strncpy, dataAddr, eax, dataSize
+    popad
     RET
 TopData ENDP
 
 ;---------------------------------------------------------------------------
-TopPop PROC,
-    topAddrAddr: DWORD
-; pop the stack top, and put new top address into topAddrAddr
+TopPop PROC
+; pop the stack top, and put new top address into topAddr
 ;---------------------------------------------------------------------------
     LOCAL dataSize: WORD
-    INVOKE TopSize, [topAddrAddr], ADDR dataSize ; put the size of stack top to dataSize
-    push ebx
-    MOV bx, WORD PTR [topAddrAddr]
-    SUB bx, 3
-    SUB bx, dataSize ; ebx points to the data body
-    MOV WORD PTR [topAddrAddr], bx ; put the address of data body into topAddr
-    pop ebx
+    pushad
+    lea eax, dataSize
+    INVOKE TopSize, eax ; put the size of stack top to dataSize
+    mov eax, 0
+    mov ax, dataSize
+    SUB calculationStackTop, eax
+    SUB calculationStackTop, 3 ; ebx points to the data body
+    popad
     RET
 TopPop ENDP
 
 ;---------------------------------------------------------------------------
 TopPush PROC,
-    topAddrAddr: DWORD, dataAddr: DWORD, sizeAddr: DWORD, typeAddr: DWORD
-; push data into stack top, and put new top address into topAddrAddr
+    dataAddr: DWORD, dataSize: WORD, dataType: BYTE
+; push data into stack top, and put new top address into topAddr
 ;---------------------------------------------------------------------------
-    LOCAL dataSize: WORD
-    push eax
-    push ecx
-    push esi
-    push edi
-    MOV ax, WORD PTR [sizeAddr]
-    MOV dataSize, ax 
+    pushad
     ; step1: put data into stack top
-    MOV esi, dataAddr
-    MOV edi, [topAddrAddr]
-    MOV ecx, 0
-    MOV cx, dataSize ; set ecx as dataSize
-    CLD ; clear the direction flag, making the copy process from low address to high address
-    REP MOVSB ; copy from esi to edi, ecx bytes; i.e. copy the data body to the stack top
+    INVOKE strncpy, calculationStackTop, dataAddr, dataSize
     MOV eax, 0
     MOV ax, dataSize
-    ADD [topAddrAddr], eax ; update stack top
+    ADD calculationStackTop, eax ; update stack top
 
-    ; step2: put size into stack top
-    MOV esi, sizeAddr
-    MOV edi, [topAddrAddr]
-    MOV ecx, 2
-    CLD
-    REP MOVSB
-    ADD [topAddrAddr], 2 ; update the top addr
+    ; step2: put dataSize into stack top
+    mov bx, dataSize
+    mov eax, [calculationStackTop]
+    mov WORD PTR [eax], bx
+    ADD calculationStackTop, 2 ; update the top addr
 
     ; step3: put type into stack top
-    MOV esi, typeAddr
-    MOV edi, [topAddrAddr]
-    MOV ecx, 1
-    CLD
-    REP MOVSB
-    ADD [topAddrAddr], 1 ; update the top addr
-    pop edi
-    pop esi
-    pop ecx
-    pop eax
+    mov bl, dataType
+    mov eax, [calculationStackTop]
+    mov BYTE PTR [eax], bl
+    ADD calculationStackTop, 1 ; update the top addr
+    popad
     RET
 TopPush ENDP
 

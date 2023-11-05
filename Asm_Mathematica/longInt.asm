@@ -205,8 +205,8 @@ LongLShift PROC,
 LongLShift ENDP
 
 ;---------------------------------------------------------------------------
-LongAnd PROC
-    , longAddr1: DWORD, longAddr2: DWORD, ansLongAddr: DWORD
+LongAnd PROC,
+    longAddr1: DWORD, longAddr2: DWORD, ansLongAddr: DWORD
 ; This procedure performs a bitwise AND on two QWORDs, answer is in ansLongAddr.
 ;---------------------------------------------------------------------------
     push eax
@@ -221,8 +221,8 @@ LongAnd PROC
 LongAnd ENDP
 
 ;---------------------------------------------------------------------------
-LongAssign PROC
-    , longAddr1: DWORD, longAddr2: DWORD
+LongAssign PROC,
+    longAddr1: DWORD, longAddr2: DWORD
 ; This procedure assigns longAddr2 to longAddr1.
 ;---------------------------------------------------------------------------
     push eax
@@ -306,23 +306,28 @@ StrToLong PROC,
     push eax
     LEA eax, tmpLong
     MOV tmpLongAddr, eax
+    MOV DWORD PTR [eax], 0
+    MOV DWORD PTR [eax+4], 0
     LEA eax, tmpLong2
     MOV tmpLong2Addr, eax
+    MOV DWORD PTR [eax], 0
+    MOV DWORD PTR [eax+4], 0
     LEA eax, sumLong
     MOV sumLongAddr, eax
+    MOV DWORD PTR [eax], 0
+    MOV DWORD PTR [eax+4], 0
     LEA eax, power_of_10
     MOV power_of_10Addr, eax
-    MOV [power_of_10Addr], 0
-    MOV [power_of_10Addr + 4], 1
-    MOV [longAddr], 0
-    MOV [longAddr + 4], 0
-    MOV [sumLongAddr], 0
-    MOV [sumLongAddr + 4], 0
+    MOV DWORD PTR [eax], 0
+    MOV DWORD PTR [eax+4], 0
     MOV i, 0
+    mov eax, [strAddr]
+    mov ebx, [i]
     ; search for the end of str, i.e. where the null terminator is
-    .WHILE BYTE PTR [strAddr + i] != 0 && BYTE PTR [strAddr + i] != 32
-        INC i
+    .WHILE BYTE PTR [eax + ebx] != 0 && BYTE PTR [eax + ebx] != 32
+        INC ebx
     .ENDW
+    mov i, ebx
     .IF i==0
         ; empty string
         MOV [longAddr], 0
@@ -332,19 +337,23 @@ StrToLong PROC,
         DEC i ; i is the index of the last char
         ; for each char, if is a digit , add (ch - '0') * 10^digit to tmpLong
         ; then dec i and inc digit
-        .WHILE i>=0
+        .WHILE i != -1
             ; for each char within
             ; tmpLong = (ch - '0') * 10^digit
-            MOV al, BYTE PTR [strAddr + i] ; the i-th char
+            mov esi, [strAddr]
+            add esi, [i]
+            MOV al, BYTE PTR [esi] ; the i-th char
             SUB al, '0'
-            MOV [tmpLongAddr], 0
-            MOV [tmpLongAddr + 4], eax
+            lea esi, tmpLong
+            MOV DWORD PTR [esi], 0
+            MOV DWORD PTR [esi+4], eax
             INVOKE LongMul, tmpLongAddr, power_of_10Addr, tmpLong2Addr
             INVOKE LongAdd , sumLongAddr, tmpLong2Addr, longAddr
             INVOKE LongAssign, sumLongAddr, longAddr
             ; update power_of_10
-            MOV [tmpLongAddr], 0
-            MOV [tmpLongAddr + 4], 10
+            lea eax, tmpLong
+            MOV DWORD PTR [eax], 0
+            MOV DWORD PTR [eax+4], 10
             INVOKE LongMul, power_of_10Addr, tmpLongAddr, tmpLong2Addr
             INVOKE LongAssign, power_of_10Addr, tmpLong2Addr
             ; update i

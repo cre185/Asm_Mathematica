@@ -43,9 +43,7 @@ public FailureSign
 CalCount DWORD 0
 public CalCount
 
-calculationStack BYTE MaxMathStackSize DUP(0)
-calculationStackTop DWORD calculationStack
-public calculationStack, calculationStackTop
+EXTERN calculationStack:BYTE, calculationStackTop:DWORD
 
 .code
 ;-----------------------------------------------------
@@ -365,7 +363,6 @@ CalculatePlus PROC
 	LOCAL long1:QWORD, long2:QWORD
 	LOCAL long1Addr:DWORD, long2Addr:DWORD
 	LOCAL sumLong:QWORD, sumLongAddr:DWORD
-	LOCAL sumSize:WORD, sumSizeAddr:DWORD
 	push eax
 	LEA eax, type1
 	MOV type1Addr, eax
@@ -377,24 +374,20 @@ CalculatePlus PROC
 	MOV long2Addr, eax
 	LEA eax, sumLong
 	MOV sumLongAddr, eax
-	LEA eax, sumSize
-	MOV sumSizeAddr, eax
 	; TODO: more types
-	INVOKE TopType, calculationStackTop, type1Addr
-	INVOKE TopData, calculationStackTop, long1Addr
-	INVOKE TopPop, Addr calculationStackTop
+	INVOKE TopType, type1Addr
+	INVOKE TopData, long1Addr
+	INVOKE TopPop
 
-	INVOKE TopType, calculationStackTop, type2Addr
-	INVOKE TopData, calculationStackTop, long2Addr
-	INVOKE TopPop, Addr calculationStackTop
+	INVOKE TopType, type2Addr
+	INVOKE TopData, long2Addr
+	INVOKE TopPop
 
 	; Add
 	INVOKE LongAdd, long1Addr, long2Addr, sumLongAddr
 
-	MOV WORD PTR [sumSizeAddr], 8
-
 	; Push
-	INVOKE TopPush, ADDR calculationStackTop, sumLongAddr, sumSizeAddr, type1Addr
+	INVOKE TopPush, sumLongAddr, 8, TYPE_INT
 
 	pop eax
 	RET
@@ -405,15 +398,17 @@ CalculatePN PROC
 ; After treated by PolishNotation PROC, calculate answer
 ;-----------------------------------------------------
 	LOCAL currentInt: QWORD, currentFloat: QWORD
-	LOCAL ansBufferLoc: DWORD, ansBufferStartingLoc: DWORD
+	LOCAL ansBufferLen: DWORD, ansBufferStartingLoc: DWORD
 	LOCAL tmpArray[MaxBufferSize]:BYTE
 	INVOKE strcpy, ADDR ansBuffer, ADDR recvBuffer ; load the recvBuffer into ansBuffer
 	mov ecx, 0
+	mov ansBufferStartingLoc, 0
 	; for each elem seperated by space:
 	; if is operand, push into stack
 	; if is operator, pop operands in accordance with the operator, then calc and push
 	; finally: pop the last operand, which is the answer
 	L1:	
+		mov ecx, ansBufferStartingLoc
 		; for each elem:
 		; loop to search:
 		.IF [ansBuffer+ecx] == 0 ; end of the elem
@@ -435,7 +430,8 @@ CalculatePN PROC
 		; and ansBufferStartingLoc points to the start() of the elem
 		; so the elem is [ansBufferStartingLoc, ansBufferLoc)
 		; now we need to determine whether it is an operand or an operator
-		
+		sub ecx, ansBufferStartingLoc
+		mov ansBufferLen, ecx
 		INVOKE IsOperator, ADDR ansBuffer, ansBufferStartingLoc
 		; if eax == 0, then it is an operand
 		.IF eax == 0
@@ -443,16 +439,19 @@ CalculatePN PROC
 			; .IF 
 				; TODO: support more types
 				; put the [ansBufferStartingLoc, ansBufferLoc) into tmpArray
-				MOV esi, ansBufferStartingLoc
-				MOV edi, offset tmpArray
-				MOV ecx, ansBufferLoc - ansBufferStartingLoc
-				REP MOVSB
-				MOV ecx, ansBufferLoc - ansBufferStartingLoc
+				mov esi, offset ansBuffer
+				add esi, ansBufferStartingLoc
+				lea edi, tmpArray
+				mov ecx, ansBufferLen
+				INVOKE strncpy, edi, esi, ecx
+				MOV ecx, ansBufferLen
 				MOV BYTE PTR [tmpArray+ecx], 0
 				; convert tmpArray into a number
-				INVOKE StrToLong, ADDR tmpArray, ADDR currentInt
+				lea eax, currentInt
+				INVOKE StrToLong, ADDR tmpArray, eax
 				; push the number into stack
-				INVOKE TopPush, ADDR calculationStackTop, ADDR ansBuffer + ansBufferStartingLoc, 8, TYPE_INT
+				lea eax, currentInt
+				INVOKE TopPush, eax, 8, TYPE_INT
 			; .ENDIF
 			JMP L4
 		.ENDIF
@@ -467,10 +466,12 @@ CalculatePN PROC
 			; .ENDIF
 		; .ENDIF
 		L4:
-		INC ansBufferLoc
+		mov ecx, ansBufferLen
+		add ansBufferStartingLoc, ecx
+		INC ansBufferStartingLoc
 		JMP L1
 	END_LOOP:
-	INVOKE TopData, calculationStackTop, ADDR ansBuffer
+	INVOKE TopData, ADDR ansBuffer
 	ret
 CalculatePN ENDP
 
