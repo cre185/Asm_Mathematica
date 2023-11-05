@@ -406,6 +406,7 @@ CalculatePN PROC
 ;-----------------------------------------------------
 	LOCAL currentInt: QWORD, currentFloat: QWORD
 	LOCAL ansBufferLoc: DWORD, ansBufferStartingLoc: DWORD
+	LOCAL tmpArray[MaxBufferSize]:BYTE
 	INVOKE strcpy, ADDR ansBuffer, ADDR recvBuffer ; load the recvBuffer into ansBuffer
 	MOV ansBufferLoc, offset ansBuffer
 	; for each elem seperated by space:
@@ -442,7 +443,16 @@ CalculatePN PROC
 			; TODO: push the operand into stack
 			; .IF 
 				; TODO: support more types
-				; push the operand into stack
+				; put the [ansBufferStartingLoc, ansBufferLoc) into tmpArray
+				MOV esi, ansBufferStartingLoc
+				MOV edi, offset tmpArray
+				MOV ecx, ansBufferLoc - ansBufferStartingLoc
+				REP MOVSB
+				MOV ecx, ansBufferLoc - ansBufferStartingLoc
+				MOV BYTE PTR [tmpArray+ecx], 0
+				; convert tmpArray into a number
+				INVOKE StrToLong, ADDR tmpArray, ADDR currentInt
+				; push the number into stack
 				INVOKE TopPush, ADDR calculationStackTop, ADDR ansBuffer + ansBufferStartingLoc, 8, TYPE_INT
 			; .ENDIF
 			JMP L4
