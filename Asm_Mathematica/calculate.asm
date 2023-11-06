@@ -362,18 +362,15 @@ CalculatePlus PROC
 	LOCAL type1Addr:DWORD, type2Addr:DWORD
 	LOCAL long1:QWORD, long2:QWORD
 	LOCAL long1Addr:DWORD, long2Addr:DWORD
-	LOCAL sumLong:QWORD, sumLongAddr:DWORD
 	push eax
 	LEA eax, type1
-	MOV type1Addr, eax
+	mov type1Addr, eax
 	LEA eax, type2
-	MOV type2Addr, eax
+	mov type2Addr, eax
 	LEA eax, long1
-	MOV long1Addr, eax
+	mov long1Addr, eax
 	LEA eax, long2
-	MOV long2Addr, eax
-	LEA eax, sumLong
-	MOV sumLongAddr, eax
+	mov long2Addr, eax
 
 	mov type1, 0
 	mov type2, 0
@@ -387,11 +384,8 @@ CalculatePlus PROC
 	INVOKE TopData, long2Addr
 	INVOKE TopPop
 
-	; Add
-	INVOKE LongAdd, long1Addr, long2Addr, sumLongAddr
-
-	; Push
-	INVOKE TopPush, sumLongAddr, 8, TYPE_INT
+	INVOKE LongAdd, long1Addr, long2Addr
+	INVOKE TopPush, long1Addr, 8, TYPE_INT
 
 	pop eax
 	RET
@@ -408,15 +402,15 @@ CalculateMul PROC
 	LOCAL sumLong:QWORD, sumLongAddr:DWORD
 	push eax
 	LEA eax, type1
-	MOV type1Addr, eax
+	mov type1Addr, eax
 	LEA eax, type2
-	MOV type2Addr, eax
+	mov type2Addr, eax
 	LEA eax, long1
-	MOV long1Addr, eax
+	mov long1Addr, eax
 	LEA eax, long2
-	MOV long2Addr, eax
+	mov long2Addr, eax
 	LEA eax, sumLong
-	MOV sumLongAddr, eax
+	mov sumLongAddr, eax
 
 	mov type1, 0
 	mov type2, 0
@@ -430,12 +424,8 @@ CalculateMul PROC
 	INVOKE TopData, long2Addr
 	INVOKE TopPop
 
-	; Add
 	INVOKE LongMul, long1Addr, long2Addr
-	INVOKE LongAssign, sumLongAddr, long1Addr
-
-	; Push
-	INVOKE TopPush, sumLongAddr, 8, TYPE_INT
+	INVOKE TopPush, long1Addr, 8, TYPE_INT
 
 	pop eax
 	RET
@@ -462,7 +452,7 @@ CalculatePN PROC
 		.IF [ansBuffer+ecx] == 0 ; end of the elem
 			JMP END_LOOP
 		.ENDIF
-		MOV ansBufferStartingLoc, ecx ; save the starting location of the elem
+		mov ansBufferStartingLoc, ecx ; save the starting location of the elem
 		L2:
 			.IF BYTE PTR [ansBuffer+ecx] == 0 ; end of the elem
 				JMP L3
@@ -492,8 +482,8 @@ CalculatePN PROC
 				lea edi, tmpArray
 				mov ecx, ansBufferLen
 				INVOKE strncpy, edi, esi, ecx
-				MOV ecx, ansBufferLen
-				MOV BYTE PTR [tmpArray+ecx], 0
+				mov ecx, ansBufferLen
+				mov BYTE PTR [tmpArray+ecx], 0
 				; convert tmpArray into a number
 				lea eax, currentInt
 				INVOKE StrToLong, ADDR tmpArray, eax

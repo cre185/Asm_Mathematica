@@ -59,11 +59,11 @@ TopType PROC,
 ; put the type of stack top to typeAddr
 ;---------------------------------------------------------------------------
     pushad
-    MOV ebx, calculationStackTop
+    mov ebx, calculationStackTop
     DEC ebx ; minus 1, since we only uses a BYTE to store the type
-    MOV al, BYTE PTR [ebx] ; get the type no.
+    mov al, BYTE PTR [ebx] ; get the type no.
     mov edx, [typeAddr]
-    MOV BYTE PTR [edx], al ; put the type no. into the buffer
+    mov BYTE PTR [edx], al ; put the type no. into the buffer
     popad
     RET
 TopType ENDP
@@ -76,9 +76,9 @@ TopSize PROC,
     pushad
     mov ebx, calculationStackTop
     SUB ebx, 3 ; minus 3, since we only uses a WORD to store the size, and a BYTE to store the type
-    MOV ax, WORD PTR [ebx] ; get the size
+    mov ax, WORD PTR [ebx] ; get the size
     mov ebx, [sizeAddr]
-    MOV WORD PTR [ebx], ax ; put the size into the buffer
+    mov WORD PTR [ebx], ax ; put the size into the buffer
     popad
     RET
 TopSize ENDP
@@ -138,8 +138,8 @@ TopPush PROC,
         mov BYTE PTR [ebx+ecx], al
         inc ecx
     .ENDW
-    MOV eax, 0
-    MOV ax, dataSize
+    mov eax, 0
+    mov ax, dataSize
     ADD calculationStackTop, eax ; update stack top
 
     ; step2: put dataSize into stack top

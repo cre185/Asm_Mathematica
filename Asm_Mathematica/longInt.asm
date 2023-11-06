@@ -35,34 +35,30 @@ strlen			PROTO C :ptr sbyte
 
 ;---------------------------------------------------------------------------
 LongAdd PROC,
-    longAddr1: DWORD, longAddr2: DWORD, ansLongAddr: DWORD
-; This procedure adds two QWORDs, answer is in ansLongAddr.
+    longAddr1: DWORD, longAddr2: DWORD
+; This procedure adds two QWORDs
 ;---------------------------------------------------------------------------
     LOCAL Increase:DWORD
     pushad
 
     mov Increase, 0
-    ; clear the answer
-    mov eax, [ansLongAddr]
-    MOV DWORD PTR [eax], 0 
-    MOV DWORD PTR [eax+4], 0 
     mov ebx, [longAddr1]
-    MOV eax, [ebx + 4] ; the lower 32 bits of longAddr1
+    mov eax, [ebx+4] ; the lower 32 bits of longAddr1
     mov ebx, [longAddr2]
-    ADD eax, [ebx + 4] ; ................. of longAddr2
+    ADD eax, [ebx+4] ; ................. of longAddr2
     .IF CARRY?
         INC Increase
     .ENDIF
-    mov ebx, [ansLongAddr]
-    MOV [ebx+4], eax ; store the lower 32 bits of ansLongAddr
+    mov ebx, [longAddr1]
+    mov [ebx+4], eax
 
     mov ebx, [longAddr1]
-    MOV eax, [ebx] ; the higher 32 bits of longAddr1
+    mov eax, [ebx] ; the higher 32 bits of longAddr1
     mov ebx, [longAddr2]
     ADD eax, [ebx] ; the higher 32 bits of longAddr2
     ADD eax, Increase ; add the carry
-    mov ebx, [ansLongAddr]
-    MOV [ebx], eax ; store the higher 32 bits of ansLongAddr
+    mov ebx, [longAddr1]
+    mov [ebx], eax ; store the higher 32 bits of ansLongAddr
     popad
     RET
 LongAdd ENDP
@@ -70,22 +66,22 @@ LongAdd ENDP
 
 ;---------------------------------------------------------------------------
 LongSub PROC,
-    longAddr1: DWORD, longAddr2: DWORD, ansLongAddr: DWORD
-; This procedure subtracts two QWORDs, answer is in ansLongAddr.
+    longAddr1: DWORD, longAddr2: DWORD
+; This procedure subtracts two QWORDs
 ;---------------------------------------------------------------------------
     ; -longAddr2 = ~longAddr2 + 1
     LOCAL tmpLong: QWORD, tmpLongAddr: DWORD
     push ebx
     push eax
-    LEA ebx, tmpLong
-    MOV tmpLongAddr, ebx
+    lea ebx, tmpLong
+    mov tmpLongAddr, ebx
     ; step1: tmp = ~long2
-    MOV eax, [longAddr2 + 4]
-    NOT eax
-    MOV [tmpLongAddr + 4], eax
-    MOV eax, [longAddr2]
-    NOT eax
-    MOV [tmpLongAddr], eax
+    mov eax, [longAddr2 + 4]
+    not eax
+    mov [tmpLongAddr + 4], eax
+    mov eax, [longAddr2]
+    not eax
+    mov [tmpLongAddr], eax
 
     ; step2: tmp = tmp + 1
     TEST eax, eax
@@ -95,7 +91,7 @@ LongSub PROC,
     INC [tmpLongAddr]
     NO_CARRY:
     ; step3: ans = long1 + tmp
-    INVOKE LongAdd, longAddr1, ADDR tmpLong, ansLongAddr
+    INVOKE LongAdd, longAddr1, ADDR tmpLong
     pop eax
     pop ebx
     RET
@@ -111,27 +107,27 @@ LongMaskLastNBits PROC,
     .IF n < 32
         ; put 1 in longAddr + 4 's higher n bits
         mov ebx, [longAddr]
-        MOV DWORD PTR [ebx], 0
-        MOV DWORD PTR [ebx+4], 0 ; set to 64-bit 0's
-        MOV eax, 1
-        MOV ecx, n
+        mov DWORD PTR [ebx], 0
+        mov DWORD PTR [ebx+4], 0 ; set to 64-bit 0's
+        mov eax, 1
+        mov ecx, n
         SHL eax, cl
         DEC eax
         mov ebx, [longAddr]
-        MOV [ebx+4], eax
+        mov [ebx+4], eax
     .ELSE
         ; n >= 32
         ; put 1 in longAddr + 4
         mov ebx, [longAddr]
-        MOV DWORD PTR [ebx+4], 0FFFFFFFFh
-        MOV DWORD PTR [ebx], 0
-        MOV eax, 1
-        MOV ecx, n
+        mov DWORD PTR [ebx+4], 0FFFFFFFFh
+        mov DWORD PTR [ebx], 0
+        mov eax, 1
+        mov ecx, n
         SUB ecx, 32
         SHL eax, cl
         DEC eax
         mov ebx, [longAddr]
-        MOV [ebx], eax
+        mov [ebx], eax
     .ENDIF
     popad
     RET
@@ -144,13 +140,13 @@ LongMaskNotLastNBits PROC,
 ;---------------------------------------------------------------------------
     pushad
     INVOKE LongMaskLastNBits, longAddr, n
-    MOV eax, [longAddr]
+    mov eax, [longAddr]
     NOT eax
-    MOV [longAddr], eax
-    MOV eax, [longAddr + 4]
+    mov [longAddr], eax
+    mov eax, [longAddr + 4]
     NOT eax
     mov ebx, [longAddr]
-    MOV [ebx+4], eax
+    mov [ebx+4], eax
     popad
     RET
 LongMaskNotLastNBits ENDP
@@ -187,12 +183,12 @@ LongAnd PROC,
 ; This procedure performs a bitwise AND on two QWORDs, answer is in ansLongAddr.
 ;---------------------------------------------------------------------------
     push eax
-    MOV eax, [longAddr1]
+    mov eax, [longAddr1]
     AND eax, [longAddr2]
-    MOV [ansLongAddr], eax
-    MOV eax, [longAddr1 + 4]
+    mov [ansLongAddr], eax
+    mov eax, [longAddr1 + 4]
     AND eax, [longAddr2 + 4]
-    MOV [ansLongAddr + 4], eax
+    mov [ansLongAddr + 4], eax
     pop eax
     RET
 LongAnd ENDP
@@ -204,13 +200,13 @@ LongAssign PROC,
 ;---------------------------------------------------------------------------
     pushad
     mov ebx, [longAddr2]
-    MOV eax, [ebx]
+    mov eax, [ebx]
     mov ebx, [longAddr1]
-    MOV [ebx], eax
+    mov [ebx], eax
     mov ebx, [longAddr2]
-    MOV eax, [ebx + 4]
+    mov eax, [ebx + 4]
     mov ebx, [longAddr1]
-    MOV [ebx + 4], eax
+    mov [ebx + 4], eax
     popad
     RET
 LongAssign ENDP
@@ -278,25 +274,21 @@ StrToLong PROC,
     strAddr: DWORD, longAddr: DWORD
 ; This procedure converts a string into a QWORD.
 ;---------------------------------------------------------------------------
-    LOCAL i:DWORD,  tmpLong: QWORD, tmpLongAddr: DWORD, tmpLong2: QWORD, tmpLong2Addr: DWORD, sumLong: QWORD, sumLongAddr: DWORD, power_of_10: QWORD, power_of_10Addr: DWORD
+    LOCAL i:DWORD, tmpLong: QWORD, tmpLongAddr: DWORD, sumLong: QWORD, sumLongAddr: DWORD, power_of_10: QWORD, power_of_10Addr: DWORD
     push eax
     LEA eax, tmpLong
-    MOV tmpLongAddr, eax
-    MOV DWORD PTR [eax], 0
-    MOV DWORD PTR [eax+4], 0
-    LEA eax, tmpLong2
-    MOV tmpLong2Addr, eax
-    MOV DWORD PTR [eax], 0
-    MOV DWORD PTR [eax+4], 0
+    mov tmpLongAddr, eax
+    mov DWORD PTR [eax], 0
+    mov DWORD PTR [eax+4], 0
     LEA eax, sumLong
-    MOV sumLongAddr, eax
-    MOV DWORD PTR [eax], 0
-    MOV DWORD PTR [eax+4], 0
+    mov sumLongAddr, eax
+    mov DWORD PTR [eax], 0
+    mov DWORD PTR [eax+4], 0
     LEA eax, power_of_10
-    MOV power_of_10Addr, eax
-    MOV DWORD PTR [eax], 0
-    MOV DWORD PTR [eax+4], 0
-    MOV i, 0
+    mov power_of_10Addr, eax
+    mov DWORD PTR [eax], 0
+    mov DWORD PTR [eax+4], 0
+    mov i, 0
     mov eax, [strAddr]
     mov ebx, i
     ; search for the end of str, i.e. where the null terminator is
@@ -306,8 +298,8 @@ StrToLong PROC,
     mov i, ebx
     .IF i==0
         ; empty string
-        MOV [longAddr], 0
-        MOV [longAddr + 4], 0
+        mov [longAddr], 0
+        mov [longAddr + 4], 0
     .ELSE
         ; non-empty
         ; for each char, if is a digit , add (ch - '0') * 10^digit to tmpLong
@@ -319,22 +311,22 @@ StrToLong PROC,
             mov esi, [strAddr]
             add esi, ecx
             mov eax, 0
-            MOV al, BYTE PTR [esi] ; the i-th char
+            mov al, BYTE PTR [esi] ; the i-th char
             SUB al, '0'
             lea esi, tmpLong
-            MOV DWORD PTR [esi], 0
-            MOV DWORD PTR [esi+4], eax
+            mov DWORD PTR [esi], 0
+            mov DWORD PTR [esi+4], eax
             ; update power_of_10
             lea eax, power_of_10
-            MOV DWORD PTR [eax], 0
-            MOV DWORD PTR [eax+4], 10
+            mov DWORD PTR [eax], 0
+            mov DWORD PTR [eax+4], 10
             INVOKE LongMul, sumLongAddr, power_of_10Addr
-            INVOKE LongAdd, sumLongAddr, tmpLongAddr, longAddr
-            INVOKE LongAssign, sumLongAddr, longAddr
+            INVOKE LongAdd, sumLongAddr, tmpLongAddr
             ; update i
             inc ecx
         .ENDW
     .ENDIF
+    INVOKE LongAssign, longAddr, sumLongAddr
     pop eax
     RET
 StrToLong ENDP
