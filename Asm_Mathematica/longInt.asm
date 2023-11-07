@@ -71,29 +71,29 @@ LongSub PROC,
 ;---------------------------------------------------------------------------
     ; -longAddr2 = ~longAddr2 + 1
     LOCAL tmpLong: QWORD, tmpLongAddr: DWORD
-    push ebx
-    push eax
+    pushad
     lea ebx, tmpLong
     mov tmpLongAddr, ebx
     ; step1: tmp = ~long2
-    mov eax, [longAddr2 + 4]
-    not eax
-    mov [tmpLongAddr + 4], eax
     mov eax, [longAddr2]
-    not eax
-    mov [tmpLongAddr], eax
+    mov edx, [eax+4]
+    not edx
+    mov edi, tmpLongAddr
+    mov [edi+4], edx
+    mov edx, [eax]
+    not edx
+    mov [edi], edx
 
     ; step2: tmp = tmp + 1
-    TEST eax, eax
-    INC [tmpLongAddr + 4]
+    ADD DWORD PTR [edi + 4], 1
     JNC NO_CARRY
     ; if carry, then add 1 to the higher 32 bits
-    INC [tmpLongAddr]
+    ADD DWORD PTR [edi], 1
     NO_CARRY:
+
     ; step3: ans = long1 + tmp
-    INVOKE LongAdd, longAddr1, ADDR tmpLong
-    pop eax
-    pop ebx
+    INVOKE LongAdd, longAddr1, tmpLongAddr
+    popad
     RET
 LongSub ENDP
 

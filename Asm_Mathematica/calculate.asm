@@ -392,6 +392,43 @@ CalculatePlus PROC
 CalculatePlus ENDP
 
 ;-----------------------------------------------------
+CalculateMinus PROC
+; Calculate the top two elements in the stack and push the answer back
+;-----------------------------------------------------
+	LOCAL type1:DWORD, type2:DWORD
+	LOCAL type1Addr:DWORD, type2Addr:DWORD
+	LOCAL long1:QWORD, long2:QWORD
+	LOCAL long1Addr:DWORD, long2Addr:DWORD
+	push eax
+	LEA eax, type1
+	mov type1Addr, eax
+	LEA eax, type2
+	mov type2Addr, eax
+	LEA eax, long1
+	mov long1Addr, eax
+	LEA eax, long2
+	mov long2Addr, eax
+
+	mov type1, 0
+	mov type2, 0
+
+	; TODO: more types
+	INVOKE TopType, type1Addr
+	INVOKE TopData, long1Addr
+	INVOKE TopPop
+
+	INVOKE TopType, type2Addr
+	INVOKE TopData, long2Addr
+	INVOKE TopPop
+
+	INVOKE LongSub, long2Addr, long1Addr
+	INVOKE TopPush, long2Addr, 8, TYPE_INT
+
+	pop eax
+	RET
+CalculateMinus ENDP
+
+;-----------------------------------------------------
 CalculateMul PROC
 ; Calculate the top two elements in the stack and push the answer back
 ;-----------------------------------------------------
@@ -504,6 +541,8 @@ CalculatePN PROC
 				INVOKE CalculatePlus
 			.ELSEIF BYTE PTR [eax] == 42
 				INVOKE CalculateMul
+			.ELSEIF BYTE PTR [eax] == 45
+				INVOKE CalculateMinus
 			.ENDIF
 		; .ENDIF
 		L4:
