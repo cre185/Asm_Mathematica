@@ -242,29 +242,18 @@ LongMul ENDP
 
 ;---------------------------------------------------------------------------
 LongDiv PROC,
-    longAddr1: DWORD, longAddr2: DWORD
+    longAddr1: DWORD, longAddr2: DWORD, remainderAddr: DWORD
 ; This procedure divides two QWORDs, answer is in longAddr1, remainder is in longAddr2.
 ;---------------------------------------------------------------------------
     pushad
-    mov esi, [longAddr1]
-    mov edi, [longAddr2]
-    mov eax, [esi+4]
-    mov edx, [edi+4]
-    mul edx
-    mov ebx, eax ; low
-    mov ecx, edx ; high
-
-    mov eax, [esi]
-    mov edx, [edi+4]
-    mul edx
-    add ecx, eax
-    mov eax, [esi+4]
-    mov edx, [edi]
-    mul edx
-    add ecx, eax
-
-    mov [esi], ecx
-    mov [esi+4], ebx
+    mov ebx, [longAddr1]
+    mov edx, [ebx]      ; high
+    mov eax, [ebx+4]    ; low
+    mov ecx, [longAddr2]
+    div ecx
+    mov [ebx+4], eax
+    mov ebx, [remainderAddr]
+    mov [ebx], edx
     popad
     RET
 LongDiv ENDP
@@ -336,16 +325,31 @@ LongToStr PROC,
     longAddr:DWORD
 ; This procedure converts a QWORD into a string.
 ;---------------------------------------------------------------------------
-    LOCAL tmpStr[MaxBufferSize]:BYTE
+    LOCAL tmpStr[MaxBufferSize]:BYTE, tmpInt:DWORD, negative: BYTE, tmpLong: QWORD
     pushad
-    mov ebx, [longAddr]
-    mov edx, [ebx] ; high
-    mov eax, [ebx+4] ; low
-    mov ecx, 0
+    mov negative, 0
     lea esi, tmpStr
+    mov ebx, [longAddr]
+    ; check if is negative
+    mov eax, [ebx]
+    and eax, 80000000h
+    JZ NON_NEGATIVE
+    ; negative
+    mov negative, 1
+    pushad
+    lea ebx, tmpLong
+    mov DWORD PTR [ebx], 00000000h
+    mov DWORD PTR [ebx + 4], 00000000h
+    INVOKE LongSub, ebx, longAddr
+    INVOKE LongAssign, longAddr, ebx ; now we get -Long
+    popad
+    NON_NEGATIVE:
+    mov eax, [ebx + 4] ; TODO: expand to REAL 64-bit division
     .WHILE eax > 0
-        mov edi, 10
-        div edi
+        INVOKE LongDiv, longAddr, 10, ADDR tmpInt 
+        mov ebx, [longAddr]
+        mov eax, [ebx + 4]; TODO: expand to REAL 64-bit division
+        mov edx, tmpInt
         add dl, '0'
         push eax
         INVOKE InsertChar, esi, 0, dl
@@ -353,6 +357,11 @@ LongToStr PROC,
         mov edx, 0
         inc ecx
     .ENDW
+    .IF negative == 1
+        ; negative, add a '-'
+        INVOKE InsertChar, esi, 0, '-'
+        INVOKE InsertChar, esi, 0, 0
+    .ENDIF  
     push ecx
     INVOKE memset, longAddr, 0, MaxBufferSize
     pop ecx
