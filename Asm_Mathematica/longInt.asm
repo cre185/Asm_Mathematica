@@ -40,7 +40,6 @@ LongAdd PROC,
 ;---------------------------------------------------------------------------
     LOCAL Increase:DWORD
     pushad
-
     mov Increase, 0
     mov ebx, [longAddr1]
     mov eax, [ebx+4] ; the lower 32 bits of longAddr1
@@ -329,6 +328,7 @@ LongToStr PROC,
     pushad
     mov negative, 0
     lea esi, tmpStr
+    INVOKE memset, esi, 0, MaxBufferSize
     mov ebx, [longAddr]
     ; check if is negative
     mov eax, [ebx]
@@ -360,7 +360,7 @@ LongToStr PROC,
     .IF negative == 1
         ; negative, add a '-'
         INVOKE InsertChar, esi, 0, '-'
-        INVOKE InsertChar, esi, 0, 0
+        inc ecx
     .ENDIF  
     push ecx
     INVOKE memset, longAddr, 0, MaxBufferSize

@@ -38,6 +38,8 @@ PngIn BYTE "in.bmp",0
 PopupTitle BYTE "Popup Window",0
 PopupText  BYTE "This window was activated by a "
 	       BYTE "WM_LBUTTONDOWN message",0
+ArialText BYTE "Arial",0
+public ArialText
 
 InputMsg BYTE "In:[%d]",0
 OutputMsg BYTE "Out:[%d]",0
@@ -111,10 +113,15 @@ BoxProc PROC,
 	.IF eax == WM_CTLCOLORSTATIC
 		mov eax, wParam
 		mov edx, 0ff0000h
-		invoke SetTextColor, eax, edx 
+		INVOKE SetTextColor, eax, edx 
 		mov edx, 0ffffffh
-		invoke CreateSolidBrush, edx
+		INVOKE CreateSolidBrush, edx
 		ret
+	.ELSEIF eax == WM_PAINT
+		INVOKE CreateFont, 20, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+			ANSI_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+			ANTIALIASED_QUALITY, FF_DONTCARE, ADDR ArialText
+		INVOKE DefWindowProc, hWnd, WM_SETFONT, eax, TRUE
 	.ENDIF
 	INVOKE DefWindowProc, hWnd, localMsg, wParam, lParam
 	ret
@@ -131,52 +138,54 @@ EditProc PROC,
 	LOCAL EditIndex:DWORD
 	mov eax, localMsg
 
-	; Call the default Edit control under most situations
 	.IF eax == WM_KEYDOWN && wParam == VK_RETURN
-		INVOKE GetKeyState, VK_SHIFT
-		and eax, 8000h
-		.IF eax != 0
-			INVOKE GetWindowTextLength, hEditWnd
-			inc eax
-			.IF eax > MaxBufferSize
-				INVOKE MessageBox, NULL, addr ErrorTitle, addr SizeError, MB_OK
-				ret
-			.ENDIF
+		INVOKE GetWindowTextLength, hEditWnd
+		inc eax
+		.IF eax > MaxBufferSize
+			INVOKE MessageBox, NULL, addr ErrorTitle, addr SizeError, MB_OK
+			ret
+		.ENDIF
 
-			INVOKE memset, ADDR recvBuffer, 0, MaxBufferSize
-			INVOKE GetEditIndex, hWnd
-			mov EditIndex, ecx
-			INVOKE GetWindowText, [hEditWnd+4*ecx], ADDR recvBuffer, eax
-			INVOKE CalculateResult
+		INVOKE memset, ADDR recvBuffer, 0, MaxBufferSize
+		INVOKE GetEditIndex, hWnd
+		mov EditIndex, ecx
+		INVOKE GetWindowText, [hEditWnd+4*ecx], ADDR recvBuffer, eax
+		INVOKE CalculateResult
 
-			; if the box is the latest: generate one extra box to show the calculate result
-			mov ecx, EditIndex
-			inc ecx
-			.IF ecx == RowBoxCount
-				INVOKE CreateNewBox
-			.ENDIF
+		; if the box is the latest: generate one extra box to show the calculate result
+		mov ecx, EditIndex
+		inc ecx
+		.IF ecx == RowBoxCount
+			INVOKE CreateNewBox
+		.ENDIF
 
-			; change the static content
-			INVOKE sprintf, ADDR TmpMsg, ADDR InputMsg, CalCount
-			mov ecx, EditIndex
-			INVOKE SetWindowText, [hStatic+4*ecx], ADDR TmpMsg
+		; change the static content
+		INVOKE sprintf, ADDR TmpMsg, ADDR InputMsg, CalCount
+		mov ecx, EditIndex
+		INVOKE SetWindowText, [hStatic+4*ecx], ADDR TmpMsg
 
-			INVOKE sprintf, ADDR TmpMsg, ADDR OutputMsg, CalCount
-			mov ecx, EditIndex
-			inc ecx
-			INVOKE SetWindowText, [hStatic+4*ecx], ADDR TmpMsg
+		INVOKE sprintf, ADDR TmpMsg, ADDR OutputMsg, CalCount
+		mov ecx, EditIndex
+		inc ecx
+		INVOKE SetWindowText, [hStatic+4*ecx], ADDR TmpMsg
 			
-			; get result in ansBuffer
-			mov ecx, EditIndex
-			inc ecx
-			INVOKE SetWindowText, [hEditWnd+4*ecx], ADDR ansBuffer
+		; get result in ansBuffer
+		mov ecx, EditIndex
+		inc ecx
+		INVOKE SetWindowText, [hEditWnd+4*ecx], ADDR ansBuffer
 
-			; ensure we have an empty box for new input
+		; ensure we have an empty box for new input
+		mov ecx, EditIndex
+		add ecx, 2
+		.IF ecx == RowBoxCount
+			INVOKE CreateNewBox
 			mov ecx, EditIndex
 			add ecx, 2
-			.IF ecx == RowBoxCount
-				INVOKE CreateNewBox
-			.ENDIF
+			INVOKE SetFocus, [hEditWnd+4*ecx]
+		.ELSE
+			mov ecx, EditIndex
+			inc ecx
+			INVOKE SetFocus, [hEditWnd+4*ecx]
 		.ENDIF
 		ret
 	.ELSEIF eax == WM_CHAR && wParam == VK_RETURN
