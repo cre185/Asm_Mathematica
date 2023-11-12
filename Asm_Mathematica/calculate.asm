@@ -30,8 +30,9 @@ recvBuffer BYTE MaxBufferSize DUP(0)
 ansBuffer BYTE MaxBufferSize DUP(0)
 public recvBuffer, ansBuffer
 
-OperatorTable BYTE "* /                            ",0
+OperatorTable BYTE "* / ^                          ",0
 			  BYTE "+ -                            ",0
+			  BYTE "&!                             ",0
 OperatorList BYTE OperatorListLength DUP(0)
 
 TestTitle BYTE "test",0
@@ -86,24 +87,33 @@ IsOperator PROC,
 	add ebx, index
 	mov al, BYTE PTR [OperatorTable]
 	.WHILE ecx < OperatorTableLength
-		.IF al == BYTE PTR [ebx]
+		.IF al == BYTE PTR [ebx] && al != 0
 			pushad
-			mov ecx, 0
-			.REPEAT
-				inc ecx
-				mov ebx, array
-				add ebx, index
-				mov al, BYTE PTR [ebx+ecx]
-				mov dl, BYTE PTR [OperatorTable+ecx]
-			.UNTIL dl == 32 || dl != al
-			.IF dl == 32
-				mov len, ecx
-				popad
-				popad
-				mov eax, len
-				ret
+			mov esi, ecx
+			dec ecx
+			.IF BYTE PTR [OperatorTable+ecx] == 32 || BYTE PTR [OperatorTable+ecx] == 0
+				mov ecx, 0
+				.REPEAT
+					inc ecx
+					inc esi
+					mov ebx, array
+					add ebx, index
+					mov al, BYTE PTR [ebx+ecx]
+					mov dl, BYTE PTR [OperatorTable+esi]
+				.UNTIL dl == 32 || dl != al
+				.IF dl == 32
+					mov len, ecx
+					popad
+					popad
+					mov eax, len
+					ret
+				.ENDIF
 			.ENDIF
 			popad
+			.REPEAT
+				inc ecx
+				mov al, BYTE PTR [OperatorTable+ecx]
+			.UNTIL al == 32
 		.ENDIF
 		inc ecx
 		mov al, BYTE PTR [OperatorTable+ecx]
@@ -286,8 +296,10 @@ PolishNotation PROC
 					.ENDW
 					.IF al == 32 ; i: position of operator, k: op length
 						INVOKE AddBrace, ADDR recvBuffer, i, k
+						mov eax, i
+						add eax, k
+						mov i, eax
 						popad
-						inc i
 						jmp restart
 					.ENDIF
 					popad
@@ -306,41 +318,45 @@ PolishNotation PROC
 	.ENDW
 
 ; step 3: move operators to the right and remove all the braces
-	mov ecx, 0
-	mov eax, offset recvBuffer
-	mov al, BYTE PTR [OperatorTable]
-	.WHILE ecx < OperatorTableLength
-		.IF al != 32 && al != 0
+	mov ecx, SIZE recvBuffer
+	.REPEAT
+		dec ecx
+		INVOKE IsOperator, ADDR recvBuffer, ecx
+		.IF eax != 0
 			pushad
-			mov ecx, SIZE recvBuffer
-			.REPEAT
-				dec ecx
-				mov bl, BYTE PTR [recvBuffer+ecx]
-				.IF bl == al
-					pushad
-					mov eax, 1
-					.WHILE eax > 0
-						inc ecx
-						mov dl, BYTE PTR [recvBuffer+ecx]
-						.IF dl == 41
-							dec eax
-						.ELSEIF dl == 40
-							inc eax
-						.ENDIF
-					.ENDW
-					inc ecx
-					INVOKE InsertChar, ADDR recvBuffer, ecx, bl
-					INVOKE InsertChar, ADDR recvBuffer, ecx, 32
-					popad
-					; INVOKE RemoveChar, ADDR recvBuffer, ecx
-					mov recvBuffer[ecx], 32
+			mov esi, ecx
+			mov ebx, 1
+			.WHILE ebx > 0
+				inc ecx
+				mov dl, BYTE PTR [recvBuffer+ecx]
+				.IF dl == 41
+					dec ebx
+				.ELSEIF dl == 40
+					inc ebx
 				.ENDIF
-			.UNTIL ecx == 0
+			.ENDW
+			inc ecx
+			mov edi, ecx
+			.WHILE eax > 0
+				mov bl, BYTE PTR [recvBuffer+esi]
+				push eax
+				INVOKE InsertChar, ADDR recvBuffer, edi, bl
+				pop eax
+				inc edi
+				inc esi
+				dec eax
+			.ENDW
+			INVOKE InsertChar, ADDR recvBuffer, ecx, 32
 			popad
+			.WHILE eax > 0
+				push eax
+				INVOKE RemoveChar, ADDR recvBuffer, ecx
+				pop eax
+				dec eax
+			.ENDW
+			INVOKE InsertChar, ADDR recvBuffer, ecx, 32
 		.ENDIF
-		inc ecx
-		mov al, BYTE PTR [OperatorTable+ecx]
-	.ENDW
+	.UNTIL ecx == 0
 	mov ecx, 0
 	mov al, BYTE PTR [recvBuffer]
 	.WHILE al != 0
@@ -355,14 +371,16 @@ PolishNotation PROC
 PolishNotation ENDP
 
 ;-----------------------------------------------------
-CalculatePlus PROC
+CalculateOp PROC,
+	Op: DWORD
 ; Calculate the top two elements in the stack and push the answer back
 ;-----------------------------------------------------
 	LOCAL type1:DWORD, type2:DWORD
 	LOCAL type1Addr:DWORD, type2Addr:DWORD
 	LOCAL long1:QWORD, long2:QWORD
 	LOCAL long1Addr:DWORD, long2Addr:DWORD
-	push eax
+	LOCAL tmpLong:QWORD, tmpLongAddr:DWORD
+	pushad
 	LEA eax, type1
 	mov type1Addr, eax
 	LEA eax, type2
@@ -371,7 +389,8 @@ CalculatePlus PROC
 	mov long1Addr, eax
 	LEA eax, long2
 	mov long2Addr, eax
-
+	LEA eax, tmpLong
+	mov tmpLongAddr, eax
 	mov type1, 0
 	mov type2, 0
 
@@ -379,94 +398,34 @@ CalculatePlus PROC
 	INVOKE TopType, type1Addr
 	INVOKE TopData, long1Addr
 	INVOKE TopPop
-
 	INVOKE TopType, type2Addr
 	INVOKE TopData, long2Addr
 	INVOKE TopPop
 
-	INVOKE LongAdd, long1Addr, long2Addr
-	INVOKE TopPush, long1Addr, 8, TYPE_INT
+	mov eax, [Op]
+	.IF BYTE PTR [eax] == 43
+		INVOKE LongAdd, long1Addr, long2Addr
+		INVOKE TopPush, long1Addr, 8, TYPE_INT
+	.ELSEIF BYTE PTR [eax] == 42
+		INVOKE LongMul, long1Addr, long2Addr
+		INVOKE TopPush, long1Addr, 8, TYPE_INT
+	.ELSEIF BYTE PTR [eax] == 45
+		INVOKE LongSub, long2Addr, long1Addr
+		INVOKE TopPush, long2Addr, 8, TYPE_INT
+	.ELSEIF BYTE PTR [eax] == 47
+		INVOKE LongDiv, long2Addr, long1Addr, tmpLongAddr
+		INVOKE TopPush, long2Addr, 8, TYPE_INT
+	.ELSEIF BYTE PTR [eax] == 94
+		INVOKE LongExp, long2Addr, long1Addr
+		INVOKE TopPush, long2Addr, 8, TYPE_INT
+	.ELSEIF WORD PTR [eax] == 2126h
+		INVOKE LongAdd, long1Addr, long2Addr
+		INVOKE TopPush, long1Addr, 8, TYPE_INT
+	.ENDIF
 
-	pop eax
+	popad
 	RET
-CalculatePlus ENDP
-
-;-----------------------------------------------------
-CalculateMinus PROC
-; Calculate the top two elements in the stack and push the answer back
-;-----------------------------------------------------
-	LOCAL type1:DWORD, type2:DWORD
-	LOCAL type1Addr:DWORD, type2Addr:DWORD
-	LOCAL long1:QWORD, long2:QWORD
-	LOCAL long1Addr:DWORD, long2Addr:DWORD
-	push eax
-	LEA eax, type1
-	mov type1Addr, eax
-	LEA eax, type2
-	mov type2Addr, eax
-	LEA eax, long1
-	mov long1Addr, eax
-	LEA eax, long2
-	mov long2Addr, eax
-
-	mov type1, 0
-	mov type2, 0
-
-	; TODO: more types
-	INVOKE TopType, type1Addr
-	INVOKE TopData, long1Addr
-	INVOKE TopPop
-
-	INVOKE TopType, type2Addr
-	INVOKE TopData, long2Addr
-	INVOKE TopPop
-
-	INVOKE LongSub, long2Addr, long1Addr
-	INVOKE TopPush, long2Addr, 8, TYPE_INT
-
-	pop eax
-	RET
-CalculateMinus ENDP
-
-;-----------------------------------------------------
-CalculateMul PROC
-; Calculate the top two elements in the stack and push the answer back
-;-----------------------------------------------------
-	LOCAL type1:DWORD, type2:DWORD
-	LOCAL type1Addr:DWORD, type2Addr:DWORD
-	LOCAL long1:QWORD, long2:QWORD
-	LOCAL long1Addr:DWORD, long2Addr:DWORD
-	LOCAL sumLong:QWORD, sumLongAddr:DWORD
-	push eax
-	LEA eax, type1
-	mov type1Addr, eax
-	LEA eax, type2
-	mov type2Addr, eax
-	LEA eax, long1
-	mov long1Addr, eax
-	LEA eax, long2
-	mov long2Addr, eax
-	LEA eax, sumLong
-	mov sumLongAddr, eax
-
-	mov type1, 0
-	mov type2, 0
-
-	; TODO: more types
-	INVOKE TopType, type1Addr
-	INVOKE TopData, long1Addr
-	INVOKE TopPop
-
-	INVOKE TopType, type2Addr
-	INVOKE TopData, long2Addr
-	INVOKE TopPop
-
-	INVOKE LongMul, long1Addr, long2Addr
-	INVOKE TopPush, long1Addr, 8, TYPE_INT
-
-	pop eax
-	RET
-CalculateMul ENDP
+CalculateOp ENDP
 
 ;-----------------------------------------------------
 CalculatePN PROC
@@ -531,20 +490,9 @@ CalculatePN PROC
 			JMP L4
 		.ENDIF
 		; else it is an operator
-		; TODO: pop operands in accordance with the operator, then calc and push
-		; .IF
-			; TODO: support more ops
-			; pop operands
-			mov eax, offset ansBuffer
-			add eax, ansBufferStartingLoc
-			.IF BYTE PTR [eax] == 43
-				INVOKE CalculatePlus
-			.ELSEIF BYTE PTR [eax] == 42
-				INVOKE CalculateMul
-			.ELSEIF BYTE PTR [eax] == 45
-				INVOKE CalculateMinus
-			.ENDIF
-		; .ENDIF
+		mov eax, offset ansBuffer
+		add eax, ansBufferStartingLoc
+		INVOKE CalculateOp, eax
 		L4:
 		mov ecx, ansBufferLen
 		add ansBufferStartingLoc, ecx

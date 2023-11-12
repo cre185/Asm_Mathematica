@@ -34,6 +34,48 @@ strlen			PROTO C :ptr sbyte
 ;---------------------------------------------------------------------------
 
 ;---------------------------------------------------------------------------
+LongAssign PROC,
+    longAddr1: DWORD, longAddr2: DWORD
+; This procedure assigns longAddr2 to longAddr1.
+;---------------------------------------------------------------------------
+    pushad
+    mov ebx, [longAddr2]
+    mov eax, [ebx]
+    mov ebx, [longAddr1]
+    mov [ebx], eax
+    mov ebx, [longAddr2]
+    mov eax, [ebx + 4]
+    mov ebx, [longAddr1]
+    mov [ebx + 4], eax
+    popad
+    RET
+LongAssign ENDP
+
+;---------------------------------------------------------------------------
+LongNeg PROC,
+    longAddr: DWORD
+; This procedure calculate the abs value of QWORD in longAddr
+;---------------------------------------------------------------------------
+    ; -longAddr2 = ~longAddr2 + 1
+    LOCAL tmpLong: QWORD
+    pushad
+    mov eax, [longAddr]
+    mov edx, [eax+4]
+    not edx
+    mov [eax+4], edx
+    mov edx, [eax]
+    not edx
+    mov [eax], edx
+    add DWORD PTR [eax + 4], 1
+    .IF CARRY?
+        ; if carry, then add 1 to the higher 32 bits
+        add DWORD PTR [eax], 1
+    .ENDIF
+    popad
+    RET
+LongNeg ENDP
+
+;---------------------------------------------------------------------------
 LongAdd PROC,
     longAddr1: DWORD, longAddr2: DWORD
 ; This procedure adds two QWORDs
@@ -69,29 +111,12 @@ LongSub PROC,
 ; This procedure subtracts two QWORDs
 ;---------------------------------------------------------------------------
     ; -longAddr2 = ~longAddr2 + 1
-    LOCAL tmpLong: QWORD, tmpLongAddr: DWORD
+    LOCAL tmpLong: QWORD
     pushad
     lea ebx, tmpLong
-    mov tmpLongAddr, ebx
-    ; step1: tmp = ~long2
-    mov eax, [longAddr2]
-    mov edx, [eax+4]
-    not edx
-    mov edi, tmpLongAddr
-    mov [edi+4], edx
-    mov edx, [eax]
-    not edx
-    mov [edi], edx
-
-    ; step2: tmp = tmp + 1
-    ADD DWORD PTR [edi + 4], 1
-    JNC NO_CARRY
-    ; if carry, then add 1 to the higher 32 bits
-    ADD DWORD PTR [edi], 1
-    NO_CARRY:
-
-    ; step3: ans = long1 + tmp
-    INVOKE LongAdd, longAddr1, tmpLongAddr
+    INVOKE LongAssign, ebx, longAddr2
+    INVOKE LongNeg, ebx
+    INVOKE LongAdd, longAddr1, ebx
     popad
     RET
 LongSub ENDP
@@ -193,24 +218,6 @@ LongAnd PROC,
 LongAnd ENDP
 
 ;---------------------------------------------------------------------------
-LongAssign PROC,
-    longAddr1: DWORD, longAddr2: DWORD
-; This procedure assigns longAddr2 to longAddr1.
-;---------------------------------------------------------------------------
-    pushad
-    mov ebx, [longAddr2]
-    mov eax, [ebx]
-    mov ebx, [longAddr1]
-    mov [ebx], eax
-    mov ebx, [longAddr2]
-    mov eax, [ebx + 4]
-    mov ebx, [longAddr1]
-    mov [ebx + 4], eax
-    popad
-    RET
-LongAssign ENDP
-
-;---------------------------------------------------------------------------
 LongMul PROC,
     longAddr1: DWORD, longAddr2: DWORD
 ; This procedure multiplies two QWORDs.
@@ -242,20 +249,61 @@ LongMul ENDP
 ;---------------------------------------------------------------------------
 LongDiv PROC,
     longAddr1: DWORD, longAddr2: DWORD, remainderAddr: DWORD
-; This procedure divides two QWORDs, answer is in longAddr1, remainder is in longAddr2.
+; This procedure divides two QWORDs, answer is in longAddr1, remainder is in remainderAddr.
 ;---------------------------------------------------------------------------
+    LOCAL isNegative:BYTE, tmpLong:QWORD
     pushad
-    mov ebx, [longAddr1]
+    mov isNegative, 0
+    lea esi, tmpLong
+    mov ebx, [longAddr2]
     mov edx, [ebx]      ; high
-    mov eax, [ebx+4]    ; low
-    mov ecx, [longAddr2]
-    div ecx
-    mov [ebx+4], eax
-    mov ebx, [remainderAddr]
-    mov [ebx], edx
+    .IF edx != 0
+        mov ecx, edx
+        mov edx, 0
+        mov ebx, [longAddr1]
+        mov eax, [ebx]
+        div ecx
+        INVOKE LongAssign, esi, ebx
+        mov DWORD PTR [ebx], 0
+        mov [ebx+4], eax
+        mov ebx, [remainderAddr]
+        mov DWORD PTR [ebx], 0 
+        mov [ebx+4], edx
+    .ELSE
+        mov ecx, [ebx+4]    ; low
+        mov ebx, [longAddr1]
+        mov edx, [ebx]
+        mov eax, [ebx+4]
+        div ecx
+        mov [ebx+4], eax
+        mov ebx, [remainderAddr]
+        mov [ebx], edx
+    .ENDIF
     popad
     RET
 LongDiv ENDP
+
+;---------------------------------------------------------------------------
+LongExp PROC,
+    longAddr1: DWORD, longAddr2: DWORD
+; This procedure calculates long1 Exp long2
+;---------------------------------------------------------------------------
+    LOCAL tmpLong:QWORD
+    pushad
+    lea esi, tmpLong
+    mov DWORD PTR [esi], 0
+    mov DWORD PTR [esi+4], 1
+    mov ecx, 0
+    mov eax, [longAddr2]
+    mov edx, [eax+4]
+    .WHILE ecx < edx
+        inc ecx
+        INVOKE LongMul, esi, longAddr1
+    .ENDW
+    INVOKE LongAssign, longAddr1, esi
+    popad
+    RET
+LongExp ENDP
 
 ;---------------------------------------------------------------------------
 StrToLong PROC,
@@ -346,7 +394,10 @@ LongToStr PROC,
     NON_NEGATIVE:
     mov eax, [ebx + 4] ; TODO: expand to REAL 64-bit division
     .WHILE eax > 0
-        INVOKE LongDiv, longAddr, 10, ADDR tmpInt 
+        lea ebx, tmpLong
+        mov DWORD PTR [ebx], 00000000h
+        mov DWORD PTR [ebx + 4], 0000000ah
+        INVOKE LongDiv, longAddr, ebx, ADDR tmpInt 
         mov ebx, [longAddr]
         mov eax, [ebx + 4]; TODO: expand to REAL 64-bit division
         mov edx, tmpInt
