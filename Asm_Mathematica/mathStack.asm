@@ -65,7 +65,7 @@ TopType PROC,
     mov edx, [typeAddr]
     mov BYTE PTR [edx], al ; put the type no. into the buffer
     popad
-    RET
+    ret
 TopType ENDP
 
 ;---------------------------------------------------------------------------
@@ -80,7 +80,7 @@ TopSize PROC,
     mov ebx, [sizeAddr]
     mov WORD PTR [ebx], ax ; put the size into the buffer
     popad
-    RET
+    ret
 TopSize ENDP
 
 ;---------------------------------------------------------------------------
@@ -104,7 +104,7 @@ TopData PROC,
         inc ecx
     .ENDW
     popad
-    RET
+    ret
 TopData ENDP
 
 ;---------------------------------------------------------------------------
@@ -120,7 +120,7 @@ TopPop PROC
     SUB calculationStackTop, eax
     SUB calculationStackTop, 3 ; ebx points to the data body
     popad
-    RET
+    ret
 TopPop ENDP
 
 ;---------------------------------------------------------------------------
@@ -154,7 +154,7 @@ TopPush PROC,
     mov BYTE PTR [eax], bl
     ADD calculationStackTop, 1 ; update the top addr
     popad
-    RET
+    ret
 TopPush ENDP
 
 

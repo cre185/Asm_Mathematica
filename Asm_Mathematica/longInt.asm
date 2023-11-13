@@ -48,16 +48,14 @@ LongAssign PROC,
     mov ebx, [longAddr1]
     mov [ebx + 4], eax
     popad
-    RET
+    ret
 LongAssign ENDP
 
 ;---------------------------------------------------------------------------
 LongNeg PROC,
     longAddr: DWORD
-; This procedure calculate the abs value of QWORD in longAddr
+; This procedure calculate the negative value of QWORD in longAddr
 ;---------------------------------------------------------------------------
-    ; -longAddr2 = ~longAddr2 + 1
-    LOCAL tmpLong: QWORD
     pushad
     mov eax, [longAddr]
     mov edx, [eax+4]
@@ -72,8 +70,23 @@ LongNeg PROC,
         add DWORD PTR [eax], 1
     .ENDIF
     popad
-    RET
+    ret
 LongNeg ENDP
+
+;---------------------------------------------------------------------------
+LongAbs PROC,
+    longAddr: DWORD
+; This procedure calculate the abs value of QWORD in longAddr
+;---------------------------------------------------------------------------
+    pushad
+    mov eax, [longAddr]
+    mov edx, [eax]
+    .IF edx >= 80000000h
+        INVOKE LongNeg, longAddr
+    .ENDIF
+    popad
+    ret
+LongAbs ENDP
 
 ;---------------------------------------------------------------------------
 LongAdd PROC,
@@ -101,7 +114,7 @@ LongAdd PROC,
     mov ebx, [longAddr1]
     mov [ebx], eax ; store the higher 32 bits of ansLongAddr
     popad
-    RET
+    ret
 LongAdd ENDP
 
 
@@ -118,7 +131,7 @@ LongSub PROC,
     INVOKE LongNeg, ebx
     INVOKE LongAdd, longAddr1, ebx
     popad
-    RET
+    ret
 LongSub ENDP
 
 ;---------------------------------------------------------------------------
@@ -154,7 +167,7 @@ LongMaskLastNBits PROC,
         mov [ebx], eax
     .ENDIF
     popad
-    RET
+    ret
 LongMaskLastNBits ENDP
 
 ;---------------------------------------------------------------------------
@@ -172,7 +185,7 @@ LongMaskNotLastNBits PROC,
     mov ebx, [longAddr]
     mov [ebx+4], eax
     popad
-    RET
+    ret
 LongMaskNotLastNBits ENDP
 
 ;---------------------------------------------------------------------------
@@ -198,7 +211,7 @@ LongLShift PROC,
         dec ecx
     .ENDW
     popad
-    RET
+    ret
 LongLShift ENDP
 
 ;---------------------------------------------------------------------------
@@ -214,7 +227,7 @@ LongAnd PROC,
     AND eax, [longAddr2 + 4]
     mov [ansLongAddr + 4], eax
     pop eax
-    RET
+    ret
 LongAnd ENDP
 
 ;---------------------------------------------------------------------------
@@ -243,7 +256,7 @@ LongMul PROC,
     mov [esi], ecx
     mov [esi+4], ebx
     popad
-    RET
+    ret
 LongMul ENDP
 
 ;---------------------------------------------------------------------------
@@ -280,7 +293,7 @@ LongDiv PROC,
         mov [ebx], edx
     .ENDIF
     popad
-    RET
+    ret
 LongDiv ENDP
 
 ;---------------------------------------------------------------------------
@@ -302,7 +315,7 @@ LongExp PROC,
     .ENDW
     INVOKE LongAssign, longAddr1, esi
     popad
-    RET
+    ret
 LongExp ENDP
 
 ;---------------------------------------------------------------------------
@@ -364,7 +377,7 @@ StrToLong PROC,
     .ENDIF
     INVOKE LongAssign, longAddr, sumLongAddr
     pop eax
-    RET
+    ret
 StrToLong ENDP
 
 ;---------------------------------------------------------------------------
@@ -418,6 +431,6 @@ LongToStr PROC,
     pop ecx
     INVOKE strncpy, longAddr, esi, ecx
     popad
-    RET
+    ret
 LongToStr ENDP
 END

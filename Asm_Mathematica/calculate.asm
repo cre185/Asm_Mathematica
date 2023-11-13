@@ -32,8 +32,13 @@ public recvBuffer, ansBuffer
 
 OperatorTable BYTE "* / ^                          ",0
 			  BYTE "+ -                            ",0
-			  BYTE "&!                             ",0
+			  BYTE "ABS                            ",0
+; Type: lower bit 0 for binary, 1 for unary; second bit 0 for operator, 1 for function
+OperatorType  BYTE " 0 0 0                         ",0
+			  BYTE " 0 0                           ",0
+			  BYTE "   3                           ",0
 OperatorList BYTE OperatorListLength DUP(0)
+OpTypeList   BYTE OperatorListLength DUP(0)
 
 TestTitle BYTE "test",0
 TestText BYTE "reached here!",0
@@ -70,6 +75,12 @@ UpdateOperator PROC,
 	mov ecx, offset OperatorTable
 	add ecx, eax
 	INVOKE strncpy, ADDR OperatorList, ecx, OperatorListLength 
+	mov eax, index
+	mov edx, OperatorListLength
+	mul edx
+	mov ecx, offset OperatorType
+	add ecx, eax
+	INVOKE strncpy, ADDR OpTypeList, ecx, OperatorListLength 
 	popad
 	ret
 UpdateOperator ENDP
@@ -78,9 +89,9 @@ UpdateOperator ENDP
 IsOperator PROC,
 	array:DWORD, index:DWORD
 ; Examine whether the value array[index] is (or is not) an operator
-; returns length of operator or 0 if is not
+; returns length and start of operator or 0 if is not
 ;-----------------------------------------------------
-	LOCAL len:DWORD
+	LOCAL len:DWORD, j:DWORD
 	pushad
 	mov ecx, 0
 	mov ebx, array
@@ -103,9 +114,12 @@ IsOperator PROC,
 				.UNTIL dl == 32 || dl != al
 				.IF dl == 32
 					mov len, ecx
+					sub esi, ecx
+					mov j, esi
 					popad
 					popad
 					mov eax, len
+					mov ebx, j
 					ret
 				.ENDIF
 			.ENDIF
@@ -162,19 +176,18 @@ RemoveChar PROC,
 RemoveChar ENDP
 
 ;-----------------------------------------------------
-AddBrace PROC,
-	array:DWORD, j:DWORD, k:DWORD
-; Add braces on both side of an operator
+RightBrace PROC,
+	array:DWORD, i:DWORD, j:DWORD, k:DWORD 
+; Add braces on the right side
+; only used in AddBrace PROC
 ;-----------------------------------------------------
-	pushad
-	
 	; right
-	mov ecx, j
+	mov ecx, i
 	add ecx, k
 	mov edx, array
 	mov bl, BYTE PTR [edx+ecx]
 	.IF bl == 40 ; (
-		mov ecx, j
+		mov ecx, i
 		add ecx, k
 		inc ecx
 		mov eax, 1
@@ -193,23 +206,85 @@ AddBrace PROC,
 		.ENDIF
 		INVOKE InsertChar, array, ecx, 41
 	.ELSE
-		mov ecx, j
+		mov ecx, i
 		add ecx, k
-		inc ecx
-		mov bl, BYTE PTR [edx+ecx]
-		.WHILE ecx >= 0 && ((bl >= 48 && bl <= 57) || (bl >= 97) && (bl <= 122) || bl == 32)
+		dec ecx
+		mov eax, 0
+		.REPEAT
 			inc ecx
 			mov bl, BYTE PTR [edx+ecx]
-		.ENDW
+			; should pass: 65-90 functions (as a whole, so special treat 91'[', 93']'), 48-57 numbers and 97-122 values, 32' '
+			.IF bl == 91
+				inc eax
+				inc ecx
+				mov bl, BYTE PTR [edx+ecx]
+			.ELSEIF bl == 93
+				.IF eax == 0
+					INVOKE InsertChar, array, ecx, 41
+					ret
+				.ENDIF
+				dec eax
+			.ENDIF
+		.UNTIL ecx >= MaxBufferSize || ((bl < 48 || bl > 57) && (bl < 65 || bl > 90) && bl != 32 && (bl < 97 || bl > 122) && bl != 91 && bl != 93 && eax == 0)
 		INVOKE InsertChar, array, ecx, 41
 	.ENDIF
+	ret
+RightBrace ENDP
 
-	; left
+;-----------------------------------------------------
+AddBrace PROC,
+	array:DWORD, i:DWORD, j:DWORD, k:DWORD 
+; Add braces on both side of an operator
+; i: position of operator in buffer, j: position of op in oplist k: op length
+;-----------------------------------------------------
+	pushad
 	mov ecx, j
+	add ecx, k
+	mov edx, offset OpTypeList
+	mov bl, BYTE PTR [edx+ecx]
+	and bl, 1
+	.IF bl > 0 ; is unary
+		INVOKE RightBrace, array, i, j, k ; 'Op''num') or 'Fun'['num'])
+		INVOKE InsertChar, array, i, 40   ; ('Op''num') or ('Fun'['num']) -- fine
+		popad 
+		ret
+	.ENDIF
+
+	mov ecx, j
+	add ecx, k
+	mov edx, offset OpTypeList
+	mov bl, BYTE PTR [edx+ecx]
+	and bl, 2
+	.IF bl > 0 ; is a function: 'Fun'('a','b')
+		mov ecx, i
+		add ecx, k
+		mov edx, array
+		.REPEAT
+			inc ecx
+			mov bl, BYTE PTR [edx+ecx]
+		.UNTIL bl == 44 ; ,
+		INVOKE RemoveChar, array, ecx ; 'Fun'('a''b')
+		mov eax, 0
+		mov edx, offset OpTypeList
+		.WHILE eax < k
+			mov bl, [edx+eax]
+			INVOKE InsertChar, array, ecx, bl
+			inc ecx
+			inc eax
+		.ENDW ; ('a''Fun''b') -- fine
+		popad
+		ret
+	.ENDIF
+
+	; finally -- the regular case
+	INVOKE RightBrace, array, i, j, k
+	; left
+	mov ecx, i
 	dec ecx
+	mov edx, array
 	mov bl, BYTE PTR [edx+ecx]
 	.IF bl == 41 ; )
-		mov ecx, j
+		mov ecx, i
 		sub ecx, 2
 		mov eax, 1
 		mov bl, BYTE PTR [edx+ecx]
@@ -228,17 +303,28 @@ AddBrace PROC,
 		inc ecx
 		INVOKE InsertChar, array, ecx, 40
 	.ELSE
-		mov ecx, j
-		sub ecx, 2
-		mov bl, BYTE PTR [edx+ecx]
-		.WHILE ecx >= 0 && ((bl >= 48 && bl <= 57) || (bl >= 97) && (bl <= 122) || bl == 32)
+		mov ecx, i
+		mov eax, 0
+		.REPEAT
 			dec ecx
 			mov bl, BYTE PTR [edx+ecx]
-		.ENDW
-		.IF ecx < 0
+			.IF bl == 93
+				inc eax
+				dec ecx
+				mov bl, BYTE PTR [edx+ecx]
+			.ELSEIF bl == 91
+				.IF eax == 0
+					inc ecx
+					INVOKE InsertChar, array, ecx, 40
+					ret
+				.ENDIF
+				dec eax
+			.ENDIF
+		.UNTIL ecx > 80000000h || ((bl < 48 || bl > 57) && (bl < 65 || bl > 90) && bl != 32 && (bl < 97 || bl > 122) && bl != 91 && bl != 93 && eax == 0)
+		inc ecx
+		.IF ecx > 80000000h
 			; exception
 		.ENDIF
-		inc ecx
 		INVOKE InsertChar, array, ecx, 40
 	.ENDIF
 
@@ -294,8 +380,8 @@ PolishNotation PROC
 						add ecx, k
 						mov bl, BYTE PTR [recvBuffer+ecx]
 					.ENDW
-					.IF al == 32 ; i: position of operator, k: op length
-						INVOKE AddBrace, ADDR recvBuffer, i, k
+					.IF al == 32 ; i: position of operator in buffer, j: position of op in oplist k: op length
+						INVOKE AddBrace, ADDR recvBuffer, i, j, k
 						mov eax, i
 						add eax, k
 						mov i, eax
@@ -318,12 +404,23 @@ PolishNotation PROC
 	.ENDW
 
 ; step 3: move operators to the right and remove all the braces
-	mov ecx, SIZE recvBuffer
+	mov ecx, 0
+	mov edx, offset recvBuffer
+	.WHILE ecx < MaxBufferSize
+		mov bl, BYTE PTR [edx+ecx]
+		.IF bl == 91 ; [
+			mov BYTE PTR [edx+ecx], 40 ; (
+		.ELSEIF bl == 93 ; ]
+			mov BYTE PTR [edx+ecx], 41 ; )
+		.ENDIF
+		inc ecx
+	.ENDW
+	mov ecx, MaxBufferSize
 	.REPEAT
 		dec ecx
 		INVOKE IsOperator, ADDR recvBuffer, ecx
 		.IF eax != 0
-			pushad
+			pushad ; ecx -> 'Op'...)
 			mov esi, ecx
 			mov ebx, 1
 			.WHILE ebx > 0
@@ -334,9 +431,9 @@ PolishNotation PROC
 				.ELSEIF dl == 40
 					inc ebx
 				.ENDIF
-			.ENDW
+			.ENDW ;'Op'...) <- ecx
 			inc ecx
-			mov edi, ecx
+			mov edi, ecx 
 			.WHILE eax > 0
 				mov bl, BYTE PTR [recvBuffer+esi]
 				push eax
@@ -346,15 +443,23 @@ PolishNotation PROC
 				inc esi
 				dec eax
 			.ENDW
-			INVOKE InsertChar, ADDR recvBuffer, ecx, 32
-			popad
+			INVOKE InsertChar, ADDR recvBuffer, ecx, 32 ; ...'Op'...) 'Op'...
+			popad ; ecx -> 'Op'...) 'Op'...
+
+			; eax = k, ebx = j
+			mov edx, offset OperatorType
+			add edx, ebx
+			mov bl, BYTE PTR [edx+eax]
 			.WHILE eax > 0
 				push eax
 				INVOKE RemoveChar, ADDR recvBuffer, ecx
 				pop eax
 				dec eax
-			.ENDW
-			INVOKE InsertChar, ADDR recvBuffer, ecx, 32
+			.ENDW ; ......) 'Op'... ? not always! 
+			and bl, 1
+			.IF bl == 0
+				INVOKE InsertChar, ADDR recvBuffer, ecx, 32
+			.ENDIF
 		.ENDIF
 	.UNTIL ecx == 0
 	mov ecx, 0
@@ -398,10 +503,21 @@ CalculateOp PROC,
 	INVOKE TopType, type1Addr
 	INVOKE TopData, long1Addr
 	INVOKE TopPop
+
+	mov eax, [Op]
+	.IF DWORD PTR [eax] == 20534241h || DWORD PTR [eax] == 534241h
+		INVOKE LongAbs, long1Addr
+		INVOKE TopPush, long1Addr, 8, TYPE_INT
+	.ELSE
+		jmp BinaryOp
+	.ENDIF 
+	popad 
+	ret
+
+	BinaryOp:
 	INVOKE TopType, type2Addr
 	INVOKE TopData, long2Addr
 	INVOKE TopPop
-
 	mov eax, [Op]
 	.IF BYTE PTR [eax] == 43
 		INVOKE LongAdd, long1Addr, long2Addr
@@ -418,20 +534,16 @@ CalculateOp PROC,
 	.ELSEIF BYTE PTR [eax] == 94
 		INVOKE LongExp, long2Addr, long1Addr
 		INVOKE TopPush, long2Addr, 8, TYPE_INT
-	.ELSEIF WORD PTR [eax] == 2126h
-		INVOKE LongAdd, long1Addr, long2Addr
-		INVOKE TopPush, long1Addr, 8, TYPE_INT
 	.ENDIF
-
 	popad
-	RET
+	ret
 CalculateOp ENDP
 
 ;-----------------------------------------------------
 CalculatePN PROC
 ; After treated by PolishNotation PROC, calculate answer
 ;-----------------------------------------------------
-	LOCAL currentInt: QWORD, currentFloat: QWORD
+	LOCAL currentInt: QWORD
 	LOCAL ansBufferLen: DWORD, ansBufferStartingLoc: DWORD
 	LOCAL tmpArray[MaxBufferSize]:BYTE
 	INVOKE strcpy, ADDR ansBuffer, ADDR recvBuffer ; load the recvBuffer into ansBuffer
