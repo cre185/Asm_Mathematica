@@ -32,11 +32,11 @@ public recvBuffer, ansBuffer
 
 OperatorTable BYTE "* / ^                          ",0
 			  BYTE "+ -                            ",0
-			  BYTE "ABS                            ",0
+			  BYTE "ABS NEG                        ",0
 ; Type: lower bit 0 for binary, 1 for unary; second bit 0 for operator, 1 for function
 OperatorType  BYTE " 0 0 0                         ",0
 			  BYTE " 0 0                           ",0
-			  BYTE "   3                           ",0
+			  BYTE "   3   3                       ",0
 OperatorList BYTE OperatorListLength DUP(0)
 OpTypeList   BYTE OperatorListLength DUP(0)
 
@@ -507,6 +507,9 @@ CalculateOp PROC,
 	mov eax, [Op]
 	.IF DWORD PTR [eax] == 20534241h || DWORD PTR [eax] == 534241h
 		INVOKE LongAbs, long1Addr
+		INVOKE TopPush, long1Addr, 8, TYPE_INT
+	.ELSEIF DWORD PTR [eax] == 2047454eh || DWORD PTR [eax] == 47454eh
+		INVOKE LongNeg, long1Addr
 		INVOKE TopPush, long1Addr, 8, TYPE_INT
 	.ELSE
 		jmp BinaryOp

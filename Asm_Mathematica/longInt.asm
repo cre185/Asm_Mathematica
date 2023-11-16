@@ -235,9 +235,24 @@ LongMul PROC,
     longAddr1: DWORD, longAddr2: DWORD
 ; This procedure multiplies two QWORDs.
 ;---------------------------------------------------------------------------
+    LOCAL isNegative:BYTE, tmpLong:QWORD
     pushad
+    mov isNegative, 0
+    lea esi, tmpLong
+    INVOKE LongAssign, esi, longAddr1
+    mov eax, [esi]
+    .IF eax >= 80000000h
+        xor isNegative, 1
+        INVOKE LongNeg, longAddr1
+    .ENDIF
+    INVOKE LongAssign, esi, longAddr2
+    mov eax, [esi]
+    .IF eax >= 80000000h
+        xor isNegative, 1
+        INVOKE LongNeg, esi
+    .ENDIF
     mov esi, [longAddr1]
-    mov edi, [longAddr2]
+    lea edi, tmpLong
     mov eax, [esi+4]
     mov edx, [edi+4]
     mul edx
@@ -255,6 +270,9 @@ LongMul PROC,
 
     mov [esi], ecx
     mov [esi+4], ebx
+    .IF isNegative != 0
+        INVOKE LongNeg, longAddr1
+    .ENDIF
     popad
     ret
 LongMul ENDP
@@ -264,33 +282,63 @@ LongDiv PROC,
     longAddr1: DWORD, longAddr2: DWORD, remainderAddr: DWORD
 ; This procedure divides two QWORDs, answer is in longAddr1, remainder is in remainderAddr.
 ;---------------------------------------------------------------------------
-    LOCAL isNegative:BYTE, tmpLong:QWORD
+    LOCAL isNegative:BYTE, tmpLong:QWORD, tmpLong2:QWORD
     pushad
     mov isNegative, 0
     lea esi, tmpLong
-    mov ebx, [longAddr2]
-    mov edx, [ebx]      ; high
+    INVOKE LongAssign, esi, longAddr1
+    mov eax, [esi]
+    .IF eax >= 80000000h
+        xor isNegative, 1
+        INVOKE LongNeg, longAddr1
+    .ENDIF
+    lea edi, tmpLong2
+    INVOKE LongAssign, edi, longAddr2
+    mov eax, [edi]
+    .IF eax >= 80000000h
+        xor isNegative, 1
+        INVOKE LongNeg, edi
+    .ENDIF
+    lea ebx, tmpLong2
+    mov edx, [ebx]
     .IF edx != 0
         mov ecx, edx
         mov edx, 0
         mov ebx, [longAddr1]
         mov eax, [ebx]
         div ecx
-        INVOKE LongAssign, esi, ebx
+        mov [esi], edx
+        mov ecx, [ebx+4]
+        mov [esi+4], ecx
+        lea ebx, tmpLong2
+        INVOKE LongSub, esi, ebx
+        .IF DWORD PTR [esi] < 80000000h
+            inc eax
+        .ELSE
+            INVOKE LongAdd, esi, ebx
+        .ENDIF
+        mov edi, [remainderAddr]
+        INVOKE LongAssign, edi, esi
+        mov ebx, [longAddr1]
         mov DWORD PTR [ebx], 0
         mov [ebx+4], eax
-        mov ebx, [remainderAddr]
-        mov DWORD PTR [ebx], 0 
-        mov [ebx+4], edx
     .ELSE
-        mov ecx, [ebx+4]    ; low
+        mov ecx, [ebx+4]
         mov ebx, [longAddr1]
-        mov edx, [ebx]
-        mov eax, [ebx+4]
+        mov edx, 0
+        mov eax, [ebx] ; div high first
         div ecx
+        mov [ebx], eax
+        mov eax, [ebx+4]
+        div ecx ; will not overflow again
         mov [ebx+4], eax
         mov ebx, [remainderAddr]
-        mov [ebx], edx
+        mov DWORD PTR [ebx], 0
+        mov [ebx+4], edx
+    .ENDIF
+    .IF isNegative != 0
+        INVOKE LongNeg, longAddr1
+        INVOKE LongNeg, remainderAddr
     .ENDIF
     popad
     ret
@@ -410,10 +458,11 @@ LongToStr PROC,
         lea ebx, tmpLong
         mov DWORD PTR [ebx], 00000000h
         mov DWORD PTR [ebx + 4], 0000000ah
-        INVOKE LongDiv, longAddr, ebx, ADDR tmpInt 
+        INVOKE LongDiv, longAddr, ebx, ADDR tmpLong
         mov ebx, [longAddr]
-        mov eax, [ebx + 4]; TODO: expand to REAL 64-bit division
-        mov edx, tmpInt
+        mov eax, [ebx + 4]
+        lea edi, tmpLong
+        mov edx, [edi+4]
         add dl, '0'
         push eax
         INVOKE InsertChar, esi, 0, dl
