@@ -14,7 +14,8 @@ strlen			PROTO C :ptr sbyte
 
 calculationStack BYTE MaxMathStackSize DUP(48)
 calculationStackTop DWORD calculationStack
-public calculationStack, calculationStackTop
+calculationStackBase DWORD calculationStack
+public calculationStack, calculationStackTop, calculationStackBase
 
 standardError BYTE "Invalid expression!", 0
 
@@ -39,7 +40,6 @@ standardError BYTE "Invalid expression!", 0
 ;    TYPE 09: ARRAY         ---> array      ---> ? BYTES
 ;    TYPE 10: ERROR         ---> error      ---> ? BYTES
 ; The stack is a long array, consisting of MaxMathStackSize DWORDs
-; Each time we want to operate the stack, 
 ;---------------------------------------------------------------------------
 
 ;---------------------------------------------------------------------------
@@ -49,7 +49,7 @@ TopType PROC,
 ;---------------------------------------------------------------------------
     pushad
     mov ebx, calculationStackTop
-    .IF ebx == OFFSET calculationStack
+    .IF ebx == calculationStackBase
         ; the stack is empty
         ; put TYPE_VOID into typeAddr
         mov edx, [typeAddr]
@@ -72,7 +72,7 @@ TopSize PROC,
 ;---------------------------------------------------------------------------
     pushad
     mov ebx, calculationStackTop
-    .IF ebx == OFFSET calculationStack
+    .IF ebx == calculationStackBase
         ; the stack is empty
         ; put 0 into sizeAddr
         mov edx, [sizeAddr]
@@ -95,7 +95,8 @@ TopData PROC,
 ;---------------------------------------------------------------------------
     LOCAL dataSize:WORD, stackData:DWORD
     pushad
-    .IF calculationStackTop == OFFSET calculationStack
+    mov ebx, calculationStackTop
+    .IF ebx == calculationStackBase
         ; the stack is empty
         ; put nothing into dataAddr
         popad
@@ -124,7 +125,8 @@ TopPop PROC
 ;---------------------------------------------------------------------------
     LOCAL dataSize: WORD
     pushad
-    .IF calculationStackTop == OFFSET calculationStack
+    mov ebx, calculationStackTop
+    .IF ebx == calculationStackBase
         ; the stack is empty
         popad
         ret
@@ -172,6 +174,36 @@ TopPush PROC,
     popad
     ret
 TopPush ENDP
+
+;---------------------------------------------------------------------------
+GetHistory PROC,
+    index:DWORD
+; get the ith calculated history and push it on the top of the stack
+;---------------------------------------------------------------------------
+    LOCAL dataSize: WORD, dataType: BYTE
+    pushad
+    mov ecx, index
+    dec ecx
+    mov ebx, calculationStackBase
+    .WHILE ecx > 0
+        sub ebx, 3
+        mov ax, WORD PTR [ebx] ; get the size
+        sub bx, ax
+        dec ecx
+    .ENDW
+    dec ebx
+    mov al, BYTE PTR [ebx]
+    mov dataType, al
+    sub ebx, 2
+    mov ax, WORD PTR [ebx]
+    mov dataSize, ax
+    mov edx, 0
+    mov dx, ax
+    sub ebx, edx
+    INVOKE TopPush, ebx, dataSize, dataType
+    popad
+    ret
+GetHistory ENDP
 
 ;---------------------------------------------------------------------------
 TopPushStandardError PROC

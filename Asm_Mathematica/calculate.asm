@@ -38,7 +38,7 @@ public FailureSign
 CalCount DWORD 0
 public CalCount
 
-EXTERN calculationStack:BYTE, calculationStackTop:DWORD
+EXTERN calculationStack:BYTE, calculationStackTop:DWORD, calculationStackBase:DWORD
 
 .code
 ;-----------------------------------------------------
@@ -486,6 +486,15 @@ CalculateOp PROC,
 		.ELSEIF DWORD PTR [eax] == 2047454eh || DWORD PTR [eax] == 47454eh
 			INVOKE LongNeg, long1Addr
 			INVOKE TopPush, long1Addr, 8, TYPE_INT
+		.ELSEIF WORD PTR [eax] == 4e49h || DWORD PTR [eax] == 54554fh || DWORD PTR [eax] == 2054554fh
+			mov edx, CalCount
+			mov eax, long1Addr
+			sub edx, DWORD PTR [eax+4]
+			.IF edx == 0 || edx >= CalCount
+				INVOKE TopPushStandardError
+			.ELSE 
+				INVOKE GetHistory, edx
+			.ENDIF
 		.ELSE
 			jmp BinaryOp
 		.ENDIF 
@@ -496,6 +505,8 @@ CalculateOp PROC,
 		.ELSEIF DWORD PTR [eax] == 2047454eh || DWORD PTR [eax] == 47454eh
 			INVOKE DoubleNeg, long1Addr
 			INVOKE TopPush, long1Addr, 8, TYPE_DOUBLE
+		.ELSEIF WORD PTR [eax] == 4e49h || DWORD PTR [eax] == 54554fh || DWORD PTR [eax] == 2054554fh
+			INVOKE TopPushStandardError
 		.ELSE
 			jmp BinaryOp
 		.ENDIF 
@@ -618,7 +629,9 @@ CalculatePN PROC
 			; determine the type first
 			mov ecx, 97 ; a
 			.WHILE ecx <= 122 ; z
+				push ecx
 				INVOKE strchr, ADDR tmpArray, cl
+				pop ecx
 				.IF eax != 0 ; all strings containing lowercase letters are interpreted as variable
 					; todo: treat variables here
 				.ENDIF
@@ -652,12 +665,14 @@ CalculatePN PROC
 	INVOKE TopType, ADDR finalType
 	INVOKE TopData, ADDR ansBuffer
 	; the record is stored here
-	INVOKE TopPop
+	mov eax, calculationStackTop
+	mov calculationStackBase, eax
+
 	.IF finalType == TYPE_INT
 		INVOKE LongToStr, ADDR ansBuffer
 	.ELSEIF finalType == TYPE_DOUBLE
 		INVOKE DoubleToStr, ADDR ansBuffer
-	.ELSEIF finalType == TYPE_ERROR
+	.ELSEIF finalType == TYPE_ERROR || finalType == TYPE_VOID
 		; actually nothing is needed. 
 	.ENDIF
 	ret
