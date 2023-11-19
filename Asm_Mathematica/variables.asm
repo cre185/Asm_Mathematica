@@ -39,6 +39,9 @@ Hash PROC,
 ; gets a string from inStrAddr, and calculates its hash value
 ; puts the hash value in outHashAddr
 ;---------------------------------------------------------------------------
+    ; e.g. for varName = "ShiLIBianLiang"
+    ; sum = g + 16*n + 16^2*a + ... + 16^k*S
+    ; hash = sum % MaxVariableHashTableSize
     ret
 Hash ENDP
 
