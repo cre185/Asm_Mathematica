@@ -11,6 +11,7 @@ sprintf         PROTO C :ptr sbyte, :ptr sbyte, :VARARG
 
 .data
 doubleStr BYTE "%lf",0
+longStr BYTE "%ld",0
 
 .code
 ;-----------------------------------------------------
@@ -140,5 +141,27 @@ DoubleToStr PROC,
 	popad
 	ret
 DoubleToStr ENDP
+
+;-----------------------------------------------------
+LongToDouble PROC,
+	longAddr: DWORD
+;-----------------------------------------------------
+	LOCAL tmpArray[128]:BYTE, doubleNum:REAL8, longNum:QWORD
+	pushad
+	INVOKE memset, ADDR tmpArray, 0, 128
+	mov eax, [longAddr]
+	lea ebx, longNum
+	mov edx, [eax]
+	mov [ebx+4], edx
+	mov edx, [eax+4]
+	mov [ebx], edx
+	INVOKE sprintf, ADDR tmpArray, ADDR longStr, longNum
+	INVOKE sscanf, ADDR tmpArray, ADDR doubleStr, ADDR doubleNum
+	fld doubleNum
+	mov eax, [longAddr]
+	fstp REAL8 PTR [eax]
+	popad
+	ret
+LongToDouble ENDP
 
 END

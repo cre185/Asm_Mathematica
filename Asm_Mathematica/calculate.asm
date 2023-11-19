@@ -530,6 +530,11 @@ CalculateOp PROC,
 			INVOKE TopPush, long2Addr, 8, TYPE_INT
 		.ENDIF
 	.ELSEIF type1 == TYPE_DOUBLE || type2 == TYPE_DOUBLE
+		.IF type1 == TYPE_INT
+			INVOKE LongToDouble, long1Addr
+		.ELSEIF type2 == TYPE_INT
+			INVOKE LongToDouble, long2Addr
+		.ENDIF
 		.IF BYTE PTR [eax] == 43
 			INVOKE DoubleAdd, long1Addr, long2Addr
 			INVOKE TopPush, long1Addr, 8, TYPE_DOUBLE

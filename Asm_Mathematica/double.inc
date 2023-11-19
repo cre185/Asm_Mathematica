@@ -3,6 +3,7 @@ DOUBLE_INC equ <1>
 
 StrToDouble PROTO :DWORD, :DWORD
 DoubleToStr PROTO :DWORD
+LongToDouble PROTO :DWORD
 
 DoubleAdd PROTO :DWORD, :DWORD
 DoubleSub PROTO :DWORD, :DWORD
