@@ -24,4 +24,6 @@ TYPE_EXPR       EQU     8
 TYPE_ARRAY      EQU     9
 TYPE_ERROR      EQU     10
 
+MaxVariableHashTableSize EQU 32768
+
 ENDIF
