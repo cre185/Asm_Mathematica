@@ -523,13 +523,23 @@ CalculateOp PROC,
 			INVOKE LongSub, long2Addr, long1Addr
 			INVOKE TopPush, long2Addr, 8, TYPE_INT
 		.ELSEIF BYTE PTR [eax] == 47
-			INVOKE LongDiv, long2Addr, long1Addr, tmpLongAddr
-			INVOKE TopPush, long2Addr, 8, TYPE_INT
+			INVOKE LongToDouble, long1Addr
+			INVOKE LongToDouble, long2Addr
+			INVOKE DoubleDiv, long2Addr, long1Addr
+			INVOKE TopPush, long2Addr, 8, TYPE_DOUBLE
 		.ELSEIF BYTE PTR [eax] == 94
 			INVOKE LongExp, long2Addr, long1Addr
 			INVOKE TopPush, long2Addr, 8, TYPE_INT
 		.ENDIF
 	.ELSEIF type1 == TYPE_DOUBLE || type2 == TYPE_DOUBLE
+		.IF BYTE PTR [eax] == 94
+			.IF type1 == TYPE_INT
+				INVOKE DoubleExp, long2Addr, long1Addr
+				INVOKE TopPush, long2Addr, 8, TYPE_DOUBLE
+			.ELSE
+				INVOKE TopPushStandardError
+			.ENDIF
+		.ENDIF
 		.IF type1 == TYPE_INT
 			INVOKE LongToDouble, long1Addr
 		.ELSEIF type2 == TYPE_INT
@@ -547,13 +557,6 @@ CalculateOp PROC,
 		.ELSEIF BYTE PTR [eax] == 47
 			INVOKE DoubleDiv, long2Addr, long1Addr
 			INVOKE TopPush, long2Addr, 8, TYPE_DOUBLE
-		.ELSEIF BYTE PTR [eax] == 94
-			.IF type2 != TYPE_DOUBLE
-				INVOKE DoubleExp, long2Addr, long1Addr
-				INVOKE TopPush, long2Addr, 8, TYPE_DOUBLE
-			.ELSE
-				INVOKE TopPushStandardError
-			.ENDIF
 		.ENDIF
 	.ENDIF
 	popad

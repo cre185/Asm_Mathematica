@@ -117,11 +117,18 @@ DoubleExp PROC,
 	doubleAddr1:DWORD, doubleAddr2:DWORD
 ;-----------------------------------------------------
 	pushad
-	mov eax, [doubleAddr2]
-	fld REAL8 PTR [eax]
 	mov eax, [doubleAddr1]
 	fld REAL8 PTR [eax]
-	fadd
+	mov eax, [doubleAddr2]
+	mov ecx, [eax+4]
+	dec ecx
+	.WHILE ecx > 0
+		mov eax, [doubleAddr1]
+		fld REAL8 PTR [eax]
+		fmul
+		dec ecx
+	.ENDW
+	mov eax, [doubleAddr1]
 	fstp REAL8 PTR [eax]
 	popad
 	ret
