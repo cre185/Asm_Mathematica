@@ -41,8 +41,8 @@ PopupText  BYTE "This window was activated by a "
 ArialText BYTE "Arial",0
 public ArialText
 
-InputMsg BYTE "In:[%d]",0
-OutputMsg BYTE "Out:[%d]",0
+InputMsg BYTE "IN:[%d]",0
+OutputMsg BYTE "OUT:[%d]",0
 TmpMsg BYTE 64 DUP(0)
 public TmpMsg
 

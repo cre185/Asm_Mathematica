@@ -21,11 +21,11 @@ public recvBuffer, ansBuffer
 
 OperatorTable BYTE "* / ^                          ",0
 			  BYTE "+ -                            ",0
-			  BYTE "ABS NEG                        ",0
+			  BYTE "ABS NEG IN OUT                 ",0
 ; Type: lower bit 0 for binary, 1 for unary; second bit 0 for operator, 1 for function
 OperatorType  BYTE " 0 0 0                         ",0
 			  BYTE " 0 0                           ",0
-			  BYTE "   3   3                       ",0
+			  BYTE "   3   3  3   3                ",0
 OperatorList BYTE OperatorListLength DUP(0)
 OpTypeList   BYTE OperatorListLength DUP(0)
 
@@ -616,6 +616,14 @@ CalculatePN PROC
 			mov BYTE PTR [tmpArray+ecx], 0
 			; convert tmpArray into a number
 			; determine the type first
+			mov ecx, 97 ; a
+			.WHILE ecx <= 122 ; z
+				INVOKE strchr, ADDR tmpArray, cl
+				.IF eax != 0 ; all strings containing lowercase letters are interpreted as variable
+					; todo: treat variables here
+				.ENDIF
+				inc ecx
+			.ENDW
 			INVOKE strchr, ADDR tmpArray, 46 ; .
 			.IF eax == 0 ; integer
 				lea eax, currentNum
@@ -643,6 +651,7 @@ CalculatePN PROC
 	END_LOOP:
 	INVOKE TopType, ADDR finalType
 	INVOKE TopData, ADDR ansBuffer
+	; the record is stored here
 	INVOKE TopPop
 	.IF finalType == TYPE_INT
 		INVOKE LongToStr, ADDR ansBuffer

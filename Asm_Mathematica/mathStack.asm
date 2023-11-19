@@ -28,7 +28,7 @@ standardError BYTE "Invalid expression!", 0
 ; 3. DATA TYPE, a BYTE to store the type of the data body
 ;    ----ALL---POSSIBLE---TYPES----------
 ;    TYPE 00: INT           ---> integer    ---> 8 BYTES
-;    TYPE 01: DOUBLE         ---> float      ---> 8 BYTES
+;    TYPE 01: DOUBLE        ---> float      ---> 8 BYTES
 ;    TYPE 02: STRING        ---> string     ---> ? BYTES
 ;    TYPE 03: STRUCT        ---> structure  ---> ? BYTES
 ;    TYPE 04: FUNCTION      ---> function   ---> ? BYTES
