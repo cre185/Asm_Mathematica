@@ -146,6 +146,8 @@ EditProc PROC,
 			ret
 		.ENDIF
 
+		mov eax, offset recvBuffer
+		mov eax, offset ansBuffer
 		INVOKE memset, ADDR recvBuffer, 0, MaxBufferSize
 		INVOKE GetEditIndex, hWnd
 		mov EditIndex, ecx
