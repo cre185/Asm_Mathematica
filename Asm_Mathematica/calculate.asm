@@ -615,6 +615,7 @@ CalculatePN PROC
 		JMP L1
 	END_LOOP:
 	INVOKE TopData, ADDR ansBuffer
+	INVOKE TopPop
 	INVOKE LongToStr, ADDR ansBuffer
 	ret
 CalculatePN ENDP
