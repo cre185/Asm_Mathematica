@@ -8,4 +8,6 @@ TopData PROTO :DWORD
 TopPop PROTO
 TopPush PROTO :DWORD, :WORD, :BYTE
 
+TopPushStandardError PROTO
+
 ENDIF

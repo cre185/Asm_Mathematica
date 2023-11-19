@@ -75,8 +75,11 @@ MainWin WNDCLASS <NULL,WinProc,NULL,NULL,NULL,NULL,NULL, \
 .code
 
 InitMenu PROTO 
-
 WinMain PROC
+
+; init the FPU
+	finit
+
 ; Get a handle to the current process.
 	INVOKE GetModuleHandle, NULL
 	mov hInstance, eax

@@ -2,19 +2,6 @@
 .model flat, stdcall
 option casemap: none
 
-include         windows.inc
-include         gdi32.inc
-includelib      gdi32.lib
-include         user32.inc
-includelib      user32.lib
-include         kernel32.inc
-includelib      kernel32.lib
-include         masm32.inc
-includelib      masm32.lib
-include         msvcrt.inc
-includelib      msvcrt.lib
-include         shell32.inc
-includelib      shell32.lib
 include  		calculate.inc
 include			macro.inc
 strncpy			PROTO C :ptr sbyte, :ptr sbyte, :DWORD
@@ -372,7 +359,7 @@ StrToLong PROC,
 ; This procedure converts a string into a QWORD.
 ;---------------------------------------------------------------------------
     LOCAL i:DWORD, tmpLong: QWORD, tmpLongAddr: DWORD, sumLong: QWORD, sumLongAddr: DWORD, power_of_10: QWORD, power_of_10Addr: DWORD
-    push eax
+    pushad
     LEA eax, tmpLong
     mov tmpLongAddr, eax
     mov DWORD PTR [eax], 0
@@ -424,7 +411,7 @@ StrToLong PROC,
         .ENDW
     .ENDIF
     INVOKE LongAssign, longAddr, sumLongAddr
-    pop eax
+    popad
     ret
 StrToLong ENDP
 

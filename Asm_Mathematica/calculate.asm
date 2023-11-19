@@ -2,28 +2,17 @@
 .model flat, stdcall
 option casemap: none
 
-include         windows.inc
-include         gdi32.inc
-includelib      gdi32.lib
-include         user32.inc
-includelib      user32.lib
-include         kernel32.inc
-includelib      kernel32.lib
-include         masm32.inc
-includelib      masm32.lib
-include         msvcrt.inc
-includelib      msvcrt.lib
-include         shell32.inc
-includelib      shell32.lib
 include  		calculate.inc
 include			macro.inc
 include			mathStack.inc
 include			longInt.inc
+include			double.inc
 strncpy			PROTO C :ptr sbyte, :ptr sbyte, :DWORD
 strcpy			PROTO C :ptr sbyte, :ptr sbyte
 strcat			PROTO C :ptr sbyte, :ptr sbyte
 memset			PROTO C :ptr sbyte, :DWORD, :DWORD
 strlen			PROTO C :ptr sbyte
+strchr			PROTO C :ptr sbyte, :DWORD
 
 .data
 recvBuffer BYTE MaxBufferSize DUP(0)
@@ -50,17 +39,6 @@ CalCount DWORD 0
 public CalCount
 
 EXTERN calculationStack:BYTE, calculationStackTop:DWORD
-
-.code
-;-----------------------------------------------------
-ParseFailure PROC
-; Generate an output representing that some exception 
-; occured in the parsing process
-;-----------------------------------------------------
-	INVOKE MessageBox, NULL, ADDR FailureText, ADDR FailureText, MB_ICONERROR+MB_OK
-	mov FailureSign, 1
-	ret
-ParseFailure ENDP
 
 .code
 ;-----------------------------------------------------
@@ -213,7 +191,7 @@ RightBrace PROC,
 		.REPEAT
 			inc ecx
 			mov bl, BYTE PTR [edx+ecx]
-			; should pass: 65-90 functions (as a whole, so special treat 91'[', 93']'), 48-57 numbers and 97-122 values, 32' '
+			; should pass: 65-90 functions (as a whole, so special treat 91'[', 93']'), 46'.', 48-57 numbers and 97-122 values, 32' '
 			.IF bl == 91
 				inc eax
 				inc ecx
@@ -225,7 +203,7 @@ RightBrace PROC,
 				.ENDIF
 				dec eax
 			.ENDIF
-		.UNTIL ecx >= MaxBufferSize || ((bl < 48 || bl > 57) && (bl < 65 || bl > 90) && bl != 32 && (bl < 97 || bl > 122) && bl != 91 && bl != 93 && eax == 0)
+		.UNTIL ecx >= MaxBufferSize || (bl != 46 && (bl < 48 || bl > 57) && (bl < 65 || bl > 90) && bl != 32 && (bl < 97 || bl > 122) && bl != 91 && bl != 93 && eax == 0)
 		INVOKE InsertChar, array, ecx, 41
 	.ENDIF
 	ret
@@ -320,7 +298,7 @@ AddBrace PROC,
 				.ENDIF
 				dec eax
 			.ENDIF
-		.UNTIL ecx > 80000000h || ((bl < 48 || bl > 57) && (bl < 65 || bl > 90) && bl != 32 && (bl < 97 || bl > 122) && bl != 91 && bl != 93 && eax == 0)
+		.UNTIL ecx > 80000000h || (bl != 46 && (bl < 48 || bl > 57) && (bl < 65 || bl > 90) && bl != 32 && (bl < 97 || bl > 122) && bl != 91 && bl != 93 && eax == 0)
 		inc ecx
 		.IF ecx > 80000000h
 			; exception
@@ -480,9 +458,9 @@ CalculateOp PROC,
 	Op: DWORD
 ; Calculate the top two elements in the stack and push the answer back
 ;-----------------------------------------------------
-	LOCAL type1:DWORD, type2:DWORD
+	LOCAL type1:BYTE, type2:BYTE
 	LOCAL type1Addr:DWORD, type2Addr:DWORD
-	LOCAL long1:QWORD, long2:QWORD
+	LOCAL long1[128]:BYTE, long2[128]:BYTE
 	LOCAL long1Addr:DWORD, long2Addr:DWORD
 	LOCAL tmpLong:QWORD, tmpLongAddr:DWORD
 	pushad
@@ -499,21 +477,34 @@ CalculateOp PROC,
 	mov type1, 0
 	mov type2, 0
 
-	; TODO: more types
 	INVOKE TopType, type1Addr
 	INVOKE TopData, long1Addr
 	INVOKE TopPop
 
 	mov eax, [Op]
-	.IF DWORD PTR [eax] == 20534241h || DWORD PTR [eax] == 534241h
-		INVOKE LongAbs, long1Addr
-		INVOKE TopPush, long1Addr, 8, TYPE_INT
-	.ELSEIF DWORD PTR [eax] == 2047454eh || DWORD PTR [eax] == 47454eh
-		INVOKE LongNeg, long1Addr
-		INVOKE TopPush, long1Addr, 8, TYPE_INT
-	.ELSE
-		jmp BinaryOp
-	.ENDIF 
+	.IF type1 == TYPE_INT
+		.IF DWORD PTR [eax] == 20534241h || DWORD PTR [eax] == 534241h
+			INVOKE LongAbs, long1Addr
+			INVOKE TopPush, long1Addr, 8, TYPE_INT
+		.ELSEIF DWORD PTR [eax] == 2047454eh || DWORD PTR [eax] == 47454eh
+			INVOKE LongNeg, long1Addr
+			INVOKE TopPush, long1Addr, 8, TYPE_INT
+		.ELSE
+			jmp BinaryOp
+		.ENDIF 
+	.ELSEIF type1 == TYPE_DOUBLE
+		.IF DWORD PTR [eax] == 20534241h || DWORD PTR [eax] == 534241h
+			INVOKE DoubleAbs, long1Addr
+			INVOKE TopPush, long1Addr, 8, TYPE_DOUBLE
+		.ELSEIF DWORD PTR [eax] == 2047454eh || DWORD PTR [eax] == 47454eh
+			INVOKE DoubleNeg, long1Addr
+			INVOKE TopPush, long1Addr, 8, TYPE_DOUBLE
+		.ELSE
+			jmp BinaryOp
+		.ENDIF 
+	.ELSEIF type1 == TYPE_ERROR
+		INVOKE TopPushStandardError
+	.ENDIF
 	popad 
 	ret
 
@@ -522,21 +513,46 @@ CalculateOp PROC,
 	INVOKE TopData, long2Addr
 	INVOKE TopPop
 	mov eax, [Op]
-	.IF BYTE PTR [eax] == 43
-		INVOKE LongAdd, long1Addr, long2Addr
-		INVOKE TopPush, long1Addr, 8, TYPE_INT
-	.ELSEIF BYTE PTR [eax] == 42
-		INVOKE LongMul, long1Addr, long2Addr
-		INVOKE TopPush, long1Addr, 8, TYPE_INT
-	.ELSEIF BYTE PTR [eax] == 45
-		INVOKE LongSub, long2Addr, long1Addr
-		INVOKE TopPush, long2Addr, 8, TYPE_INT
-	.ELSEIF BYTE PTR [eax] == 47
-		INVOKE LongDiv, long2Addr, long1Addr, tmpLongAddr
-		INVOKE TopPush, long2Addr, 8, TYPE_INT
-	.ELSEIF BYTE PTR [eax] == 94
-		INVOKE LongExp, long2Addr, long1Addr
-		INVOKE TopPush, long2Addr, 8, TYPE_INT
+	.IF type1 == TYPE_ERROR || type2 == TYPE_ERROR
+		INVOKE TopPushStandardError
+	.ELSEIF type1 == TYPE_INT && type2 == TYPE_INT
+		.IF BYTE PTR [eax] == 43
+			INVOKE LongAdd, long1Addr, long2Addr
+			INVOKE TopPush, long1Addr, 8, TYPE_INT
+		.ELSEIF BYTE PTR [eax] == 42
+			INVOKE LongMul, long1Addr, long2Addr
+			INVOKE TopPush, long1Addr, 8, TYPE_INT
+		.ELSEIF BYTE PTR [eax] == 45
+			INVOKE LongSub, long2Addr, long1Addr
+			INVOKE TopPush, long2Addr, 8, TYPE_INT
+		.ELSEIF BYTE PTR [eax] == 47
+			INVOKE LongDiv, long2Addr, long1Addr, tmpLongAddr
+			INVOKE TopPush, long2Addr, 8, TYPE_INT
+		.ELSEIF BYTE PTR [eax] == 94
+			INVOKE LongExp, long2Addr, long1Addr
+			INVOKE TopPush, long2Addr, 8, TYPE_INT
+		.ENDIF
+	.ELSEIF type1 == TYPE_DOUBLE || type2 == TYPE_DOUBLE
+		.IF BYTE PTR [eax] == 43
+			INVOKE DoubleAdd, long1Addr, long2Addr
+			INVOKE TopPush, long1Addr, 8, TYPE_DOUBLE
+		.ELSEIF BYTE PTR [eax] == 42
+			INVOKE DoubleMul, long1Addr, long2Addr
+			INVOKE TopPush, long1Addr, 8, TYPE_DOUBLE
+		.ELSEIF BYTE PTR [eax] == 45
+			INVOKE DoubleSub, long2Addr, long1Addr
+			INVOKE TopPush, long2Addr, 8, TYPE_DOUBLE
+		.ELSEIF BYTE PTR [eax] == 47
+			INVOKE DoubleDiv, long2Addr, long1Addr
+			INVOKE TopPush, long2Addr, 8, TYPE_DOUBLE
+		.ELSEIF BYTE PTR [eax] == 94
+			.IF type2 != TYPE_DOUBLE
+				INVOKE DoubleExp, long2Addr, long1Addr
+				INVOKE TopPush, long2Addr, 8, TYPE_DOUBLE
+			.ELSE
+				INVOKE TopPushStandardError
+			.ENDIF
+		.ENDIF
 	.ENDIF
 	popad
 	ret
@@ -546,9 +562,9 @@ CalculateOp ENDP
 CalculatePN PROC
 ; After treated by PolishNotation PROC, calculate answer
 ;-----------------------------------------------------
-	LOCAL currentInt: QWORD
+	LOCAL currentNum: QWORD
 	LOCAL ansBufferLen: DWORD, ansBufferStartingLoc: DWORD
-	LOCAL tmpArray[MaxBufferSize]:BYTE
+	LOCAL tmpArray[MaxBufferSize]:BYTE, finalType:BYTE
 	INVOKE strcpy, ADDR ansBuffer, ADDR recvBuffer ; load the recvBuffer into ansBuffer
 	mov ecx, 0
 	mov ansBufferStartingLoc, 0
@@ -584,24 +600,30 @@ CalculatePN PROC
 		INVOKE IsOperator, ADDR ansBuffer, ansBufferStartingLoc
 		; if eax == 0, then it is an operand
 		.IF eax == 0
-			; TODO: push the operand into stack
-			; .IF 
-				; TODO: support more types
-				; put the [ansBufferStartingLoc, ansBufferLoc) into tmpArray
-				mov esi, offset ansBuffer
-				add esi, ansBufferStartingLoc
-				lea edi, tmpArray
-				mov ecx, ansBufferLen
-				INVOKE strncpy, edi, esi, ecx
-				mov ecx, ansBufferLen
-				mov BYTE PTR [tmpArray+ecx], 0
-				; convert tmpArray into a number
-				lea eax, currentInt
+			; TODO: support more types
+			; put the [ansBufferStartingLoc, ansBufferLoc) into tmpArray
+			mov esi, offset ansBuffer
+			add esi, ansBufferStartingLoc
+			lea edi, tmpArray
+			mov ecx, ansBufferLen
+			INVOKE strncpy, edi, esi, ecx
+			mov ecx, ansBufferLen
+			mov BYTE PTR [tmpArray+ecx], 0
+			; convert tmpArray into a number
+			; determine the type first
+			INVOKE strchr, ADDR tmpArray, 46 ; .
+			.IF eax == 0 ; integer
+				lea eax, currentNum
 				INVOKE StrToLong, ADDR tmpArray, eax
 				; push the number into stack
-				lea eax, currentInt
+				lea eax, currentNum
 				INVOKE TopPush, eax, 8, TYPE_INT
-			; .ENDIF
+			.ELSE ; float number
+				lea eax, currentNum
+				INVOKE StrToDouble, ADDR tmpArray, eax
+				lea eax, currentNum
+				INVOKE TopPush, eax, 8, TYPE_DOUBLE
+			.ENDIF
 			JMP L4
 		.ENDIF
 		; else it is an operator
@@ -614,9 +636,16 @@ CalculatePN PROC
 		INC ansBufferStartingLoc
 		JMP L1
 	END_LOOP:
+	INVOKE TopType, ADDR finalType
 	INVOKE TopData, ADDR ansBuffer
 	INVOKE TopPop
-	INVOKE LongToStr, ADDR ansBuffer
+	.IF finalType == TYPE_INT
+		INVOKE LongToStr, ADDR ansBuffer
+	.ELSEIF finalType == TYPE_DOUBLE
+		INVOKE DoubleToStr, ADDR ansBuffer
+	.ELSEIF finalType == TYPE_ERROR
+		; actually nothing is needed. 
+	.ENDIF
 	ret
 CalculatePN ENDP
 

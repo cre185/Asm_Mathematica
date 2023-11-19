@@ -2,19 +2,6 @@
 .model flat, stdcall
 option casemap: none
 
-include         windows.inc
-include         gdi32.inc
-includelib      gdi32.lib
-include         user32.inc
-includelib      user32.lib
-include         kernel32.inc
-includelib      kernel32.lib
-include         masm32.inc
-includelib      masm32.lib
-include         msvcrt.inc
-includelib      msvcrt.lib
-include         shell32.inc
-includelib      shell32.lib
 include  		calculate.inc
 include			macro.inc
 strncpy			PROTO C :ptr sbyte, :ptr sbyte, :DWORD
@@ -29,6 +16,8 @@ calculationStack BYTE MaxMathStackSize DUP(48)
 calculationStackTop DWORD calculationStack
 public calculationStack, calculationStackTop
 
+standardError BYTE "Invalid expression!", 0
+
 .code
 ;---------------------------------------------------------------------------
 ; in this source file we mainly wish to manage stack in a more accurate way.
@@ -39,7 +28,7 @@ public calculationStack, calculationStackTop
 ; 3. DATA TYPE, a BYTE to store the type of the data body
 ;    ----ALL---POSSIBLE---TYPES----------
 ;    TYPE 00: INT           ---> integer    ---> 8 BYTES
-;    TYPE 01: FLOAT         ---> float      ---> 8 BYTES
+;    TYPE 01: DOUBLE         ---> float      ---> 8 BYTES
 ;    TYPE 02: STRING        ---> string     ---> ? BYTES
 ;    TYPE 03: STRUCT        ---> structure  ---> ? BYTES
 ;    TYPE 04: FUNCTION      ---> function   ---> ? BYTES
@@ -60,7 +49,7 @@ TopType PROC,
 ;---------------------------------------------------------------------------
     pushad
     mov ebx, calculationStackTop
-    DEC ebx ; minus 1, since we only uses a BYTE to store the type
+    dec ebx ; minus 1, since we only uses a BYTE to store the type
     mov al, BYTE PTR [ebx] ; get the type no.
     mov edx, [typeAddr]
     mov BYTE PTR [edx], al ; put the type no. into the buffer
@@ -157,5 +146,15 @@ TopPush PROC,
     ret
 TopPush ENDP
 
+;---------------------------------------------------------------------------
+TopPushStandardError PROC
+; generate a standard error message and push the error onto the stack
+;---------------------------------------------------------------------------
+    pushad
+    INVOKE strlen, ADDR standardError
+    INVOKE TopPush, ADDR standardError, ax, TYPE_ERROR
+    popad
+    ret
+TopPushStandardError ENDP
 
 END
