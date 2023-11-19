@@ -474,13 +474,10 @@ CalculateOp PROC,
 	mov long2Addr, eax
 	LEA eax, tmpLong
 	mov tmpLongAddr, eax
-	mov type1, 0
-	mov type2, 0
 
 	INVOKE TopType, type1Addr
 	INVOKE TopData, long1Addr
 	INVOKE TopPop
-
 	mov eax, [Op]
 	.IF type1 == TYPE_INT
 		.IF DWORD PTR [eax] == 20534241h || DWORD PTR [eax] == 534241h

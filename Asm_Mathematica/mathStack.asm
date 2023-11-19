@@ -49,7 +49,6 @@ TopType PROC,
 ;---------------------------------------------------------------------------
     pushad
     mov ebx, calculationStackTop
-    dec ebx ; minus 1, since we only uses a BYTE to store the type
     .IF ebx == OFFSET calculationStack
         ; the stack is empty
         ; put TYPE_VOID into typeAddr
@@ -58,7 +57,7 @@ TopType PROC,
         popad
         ret
     .ENDIF
-    DEC ebx ; minus 1, since we only uses a BYTE to store the type
+    dec ebx ; minus 1, since we only uses a BYTE to store the type
     mov al, BYTE PTR [ebx] ; get the type no.
     mov edx, [typeAddr]
     mov BYTE PTR [edx], al ; put the type no. into the buffer
