@@ -207,12 +207,23 @@ GetHistory PROC,
 GetHistory ENDP
 
 ;---------------------------------------------------------------------------
+TopPushError PROC,
+    errorAddr: DWORD
+; generate an error message and push the error onto the stack
+;---------------------------------------------------------------------------
+    pushad
+    INVOKE strlen, errorAddr
+    INVOKE TopPush, errorAddr, ax, TYPE_ERROR
+    popad
+    ret
+TopPushError ENDP
+
+;---------------------------------------------------------------------------
 TopPushStandardError PROC
 ; generate a standard error message and push the error onto the stack
 ;---------------------------------------------------------------------------
     pushad
-    INVOKE strlen, ADDR standardError
-    INVOKE TopPush, ADDR standardError, ax, TYPE_ERROR
+    INVOKE TopPushError, ADDR standardError
     popad
     ret
 TopPushStandardError ENDP

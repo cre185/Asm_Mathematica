@@ -32,9 +32,7 @@ OpTypeList   BYTE OperatorListLength DUP(0)
 
 TestTitle BYTE "test",0
 TestText BYTE "reached here!",0
-FailureText BYTE "!Calculation failed!",0
-FailureSign BYTE 0
-public FailureSign
+InOutError BYTE "Invalid use of IN/OUT!",0
 
 CalCount DWORD 0
 public CalCount
@@ -461,6 +459,8 @@ CalculateOp PROC,
 ;-----------------------------------------------------
 	LOCAL type1:BYTE, type2:BYTE
 	LOCAL type1Addr:DWORD, type2Addr:DWORD
+	LOCAL size1:WORD, size2:WORD
+	LOCAL size1Addr:DWORD, size2Addr:DWORD
 	LOCAL long1[128]:BYTE, long2[128]:BYTE
 	LOCAL long1Addr:DWORD, long2Addr:DWORD
 	LOCAL tmpLong:QWORD, tmpLongAddr:DWORD
@@ -469,6 +469,10 @@ CalculateOp PROC,
 	mov type1Addr, eax
 	LEA eax, type2
 	mov type2Addr, eax
+	LEA eax, size1
+	mov size1Addr, eax
+	LEA eax, size2
+	mov size2Addr, eax
 	LEA eax, long1
 	mov long1Addr, eax
 	LEA eax, long2
@@ -477,6 +481,7 @@ CalculateOp PROC,
 	mov tmpLongAddr, eax
 
 	INVOKE TopType, type1Addr
+	INVOKE TopSize, size1Addr
 	INVOKE TopData, long1Addr
 	INVOKE TopPop
 	mov eax, [Op]
@@ -492,7 +497,7 @@ CalculateOp PROC,
 			mov eax, long1Addr
 			sub edx, DWORD PTR [eax+4]
 			.IF edx == 0 || edx >= CalCount
-				INVOKE TopPushStandardError
+				INVOKE TopPushError, ADDR InOutError
 			.ELSE 
 				INVOKE GetHistory, edx
 			.ENDIF
@@ -507,23 +512,26 @@ CalculateOp PROC,
 			INVOKE DoubleNeg, long1Addr
 			INVOKE TopPush, long1Addr, 8, TYPE_DOUBLE
 		.ELSEIF WORD PTR [eax] == 4e49h || DWORD PTR [eax] == 54554fh || DWORD PTR [eax] == 2054554fh
-			INVOKE TopPushStandardError
+			INVOKE TopPushError, ADDR InOutError
 		.ELSE
 			jmp BinaryOp
 		.ENDIF 
 	.ELSEIF type1 == TYPE_ERROR
-		INVOKE TopPushStandardError
+		INVOKE TopPush, long1Addr, size1, type1
 	.ENDIF
 	popad 
 	ret
 
 	BinaryOp:
 	INVOKE TopType, type2Addr
+	INVOKE TopSize, size2Addr
 	INVOKE TopData, long2Addr
 	INVOKE TopPop
 	mov eax, [Op]
-	.IF type1 == TYPE_ERROR || type2 == TYPE_ERROR
-		INVOKE TopPushStandardError
+	.IF type1 == TYPE_ERROR
+		INVOKE TopPush, long1Addr, size1, type1
+	.ELSEIF type2 == TYPE_ERROR
+		INVOKE TopPush, long2Addr, size2, type2
 	.ELSEIF type1 == TYPE_INT && type2 == TYPE_INT
 		.IF BYTE PTR [eax] == 43
 			INVOKE LongAdd, long1Addr, long2Addr
