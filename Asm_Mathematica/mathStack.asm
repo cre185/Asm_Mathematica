@@ -50,6 +50,15 @@ TopType PROC,
     pushad
     mov ebx, calculationStackTop
     dec ebx ; minus 1, since we only uses a BYTE to store the type
+    .IF ebx == OFFSET calculationStack
+        ; the stack is empty
+        ; put TYPE_VOID into typeAddr
+        mov edx, [typeAddr]
+        mov BYTE PTR [edx], TYPE_VOID
+        popad
+        ret
+    .ENDIF
+    DEC ebx ; minus 1, since we only uses a BYTE to store the type
     mov al, BYTE PTR [ebx] ; get the type no.
     mov edx, [typeAddr]
     mov BYTE PTR [edx], al ; put the type no. into the buffer
@@ -64,6 +73,14 @@ TopSize PROC,
 ;---------------------------------------------------------------------------
     pushad
     mov ebx, calculationStackTop
+    .IF ebx == OFFSET calculationStack
+        ; the stack is empty
+        ; put 0 into sizeAddr
+        mov edx, [sizeAddr]
+        mov WORD PTR [edx], 0
+        popad
+        ret
+    .ENDIF
     SUB ebx, 3 ; minus 3, since we only uses a WORD to store the size, and a BYTE to store the type
     mov ax, WORD PTR [ebx] ; get the size
     mov ebx, [sizeAddr]
@@ -79,6 +96,12 @@ TopData PROC,
 ;---------------------------------------------------------------------------
     LOCAL dataSize:WORD, stackData:DWORD
     pushad
+    .IF calculationStackTop == OFFSET calculationStack
+        ; the stack is empty
+        ; put nothing into dataAddr
+        popad
+        ret
+    .ENDIF
     INVOKE TopSize, ADDR dataSize ; put the size of stack top to dataSize
     mov eax, calculationStackTop
     sub ax, dataSize
@@ -98,10 +121,15 @@ TopData ENDP
 
 ;---------------------------------------------------------------------------
 TopPop PROC
-; pop the stack top, and put new top address into topAddr
+; pop the stack top
 ;---------------------------------------------------------------------------
     LOCAL dataSize: WORD
     pushad
+    .IF calculationStackTop == OFFSET calculationStack
+        ; the stack is empty
+        popad
+        ret
+    .ENDIF
     lea eax, dataSize
     INVOKE TopSize, eax ; put the size of stack top to dataSize
     mov eax, 0

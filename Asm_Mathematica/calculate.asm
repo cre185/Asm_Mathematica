@@ -456,7 +456,7 @@ PolishNotation ENDP
 ;-----------------------------------------------------
 CalculateOp PROC,
 	Op: DWORD
-; Calculate the top two elements in the stack and push the answer back
+; Calculate the ans according to Op and push back ans
 ;-----------------------------------------------------
 	LOCAL type1:BYTE, type2:BYTE
 	LOCAL type1Addr:DWORD, type2Addr:DWORD
