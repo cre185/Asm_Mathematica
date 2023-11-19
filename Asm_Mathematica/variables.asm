@@ -40,7 +40,7 @@ Hash PROC,
 ; puts the hash value in outHashAddr
 ;---------------------------------------------------------------------------
     ; e.g. for varName = "ShiLIBianLiang"
-    ; sum = g + 16*n + 16^2*a + ... + 16^k*S
+    ; sum = g + 16*n + 16^2*a + ... + 16^13*S
     ; hash = sum % MaxVariableHashTableSize
     ret
 Hash ENDP
