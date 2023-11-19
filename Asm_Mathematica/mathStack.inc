@@ -9,6 +9,7 @@ TopPop PROTO
 TopPush PROTO :DWORD, :WORD, :BYTE
 
 GetHistory PROTO :DWORD
+TopPushError PROTO :DWORD
 TopPushStandardError PROTO
 
 ENDIF
