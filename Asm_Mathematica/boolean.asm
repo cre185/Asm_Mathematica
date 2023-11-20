@@ -42,4 +42,40 @@ BoolXor PROC,
     ret
 BoolXor ENDP
 
+;---------------------------------------------------------------------------
+LongToBool PROC,
+    longAddr:DWORD
+;---------------------------------------------------------------------------
+    pushad
+    mov eax, [longAddr]
+    mov ebx, [eax+4]
+    .IF ebx == 0
+        mov ebx, [eax]
+        .IF ebx == 0
+            mov BYTE PTR [eax], 1
+        .ENDIF
+    .ENDIF
+    mov DWORD PTR [eax], 0
+    popad
+    ret
+LongToBool ENDP
+
+;---------------------------------------------------------------------------
+DoubleToBool PROC,
+    longAddr:DWORD
+;---------------------------------------------------------------------------
+    pushad
+    mov eax, [longAddr]
+    mov ebx, [eax+4]
+    .IF ebx == 0
+        mov ebx, [eax]
+        .IF ebx == 0
+            mov BYTE PTR [eax], 1
+        .ENDIF
+    .ENDIF
+    mov DWORD PTR [eax], 0
+    popad
+    ret
+DoubleToBool ENDP
+
 END
