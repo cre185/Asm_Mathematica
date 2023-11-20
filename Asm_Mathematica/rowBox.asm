@@ -245,6 +245,8 @@ CreateNewBox PROC
 		mov ebx, RowBoxCount
 		dec ebx
 		INVOKE GetWindowRect, [hRowBox+4*ebx], ADDR WndRect
+		mov edx, WndRect.top
+		mov currentY, edx
 		mov edx, WndRect.right
 		sub edx, WndRect.left
 		INVOKE SetWindowPos, [hRowBox+4*ebx], NULL, NULL, NULL, edx, boxHeight, SWP_NOMOVE+SWP_NOOWNERZORDER
