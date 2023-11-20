@@ -135,6 +135,27 @@ DoubleExp PROC,
 DoubleExp ENDP
 
 ;-----------------------------------------------------
+DoubleEqu PROC,
+	doubleAddr1:DWORD, doubleAddr2:DWORD
+;-----------------------------------------------------
+	pushad
+	mov eax, [doubleAddr1]
+	fld REAL8 PTR [eax]
+	mov eax, [doubleAddr2]
+	fld REAL8 PTR [eax]
+	fcom
+	.IF ZERO?
+		mov eax, [doubleAddr1]
+		mov BYTE PTR [eax], 1
+	.ELSE
+		mov eax, [doubleAddr1]
+		mov BYTE PTR [eax], 0
+	.ENDIF
+	popad
+	ret
+DoubleEqu ENDP
+
+;-----------------------------------------------------
 DoubleToStr PROC,
 	ansAddr: DWORD
 ;-----------------------------------------------------

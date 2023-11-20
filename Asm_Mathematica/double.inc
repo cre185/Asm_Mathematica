@@ -14,4 +14,6 @@ DoubleExp PROTO :DWORD, :DWORD
 DoubleAbs PROTO :DWORD
 DoubleNeg PROTO :DWORD
 
+DoubleEqu PROTO :DWORD, :DWORD
+
 ENDIF

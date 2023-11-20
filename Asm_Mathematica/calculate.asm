@@ -7,6 +7,7 @@ include			macro.inc
 include			mathStack.inc
 include			longInt.inc
 include			double.inc
+include			boolean.inc
 include			variables.inc
 strncpy			PROTO C :ptr sbyte, :ptr sbyte, :DWORD
 strcpy			PROTO C :ptr sbyte, :ptr sbyte
@@ -556,6 +557,9 @@ CalculateOp PROC,
 		.ELSEIF BYTE PTR [eax] == 94
 			INVOKE LongExp, long2Addr, long1Addr
 			INVOKE TopPush, long2Addr, 8, TYPE_INT
+		.ELSEIF WORD PTR [eax] == 3d3dh
+			INVOKE LongEqu, long1Addr, long2Addr
+			INVOKE TopPush, long1Addr, 1, TYPE_BOOL
 		.ELSE 
 			INVOKE TopPushStandardError
 		.ENDIF
