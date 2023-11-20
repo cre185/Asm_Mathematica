@@ -38,8 +38,11 @@ PngIn BYTE "in.bmp",0
 PopupTitle BYTE "Popup Window",0
 PopupText  BYTE "This window was activated by a "
 	       BYTE "WM_LBUTTONDOWN message",0
-ArialText BYTE "Arial",0
-public ArialText
+FontText BYTE "Arial",0
+StandardFont DWORD ?
+StaticFontText BYTE "Calibri",0
+StaticFont DWORD ?
+public FontText, StandardFont, StaticFontText, StaticFont
 
 InputMsg BYTE "IN:[%d]",0
 OutputMsg BYTE "OUT:[%d]",0
@@ -59,7 +62,8 @@ boxHeight DWORD 20
 currentY DWORD 30
 marginY DWORD 20
 staticWidth DWORD 64
-marginEdit DWORD 0
+marginEdit DWORD 16
+editMarginTop DWORD 3
 public WndRect, boxHeight, currentY, marginY, staticWidth, marginEdit
 
 DRAWItemStruct STRUCT
@@ -118,10 +122,6 @@ BoxProc PROC,
 		INVOKE CreateSolidBrush, edx
 		ret
 	.ELSEIF eax == WM_PAINT
-		INVOKE CreateFont, 20, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
-			ANSI_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-			ANTIALIASED_QUALITY, FF_DONTCARE, ADDR ArialText
-		INVOKE DefWindowProc, hWnd, WM_SETFONT, eax, TRUE
 	.ENDIF
 	INVOKE DefWindowProc, hWnd, localMsg, wParam, lParam
 	ret
@@ -218,6 +218,16 @@ InitRowBox PROC
 	.IF eax == 0
 	  call ErrorHandler
 	.ENDIF
+
+; Initialize fonts
+	INVOKE CreateFont, 20, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE,
+		ANSI_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+		ANTIALIASED_QUALITY, FF_DONTCARE, ADDR FontText
+	mov StandardFont, eax
+	INVOKE CreateFont, 20, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE,
+		ANSI_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+		ANTIALIASED_QUALITY, FF_DONTCARE, ADDR StaticFontText
+	mov StaticFont, eax
 	ret
 InitRowBox ENDP
 
@@ -255,7 +265,6 @@ CreateNewBox PROC
 		edx,hMainWnd,ToMain,hInstance,NULL
 	.IF eax == 0
 		call ErrorHandler
-		pop eax
 		ret
 	.ENDIF
 	mov ebx, RowBoxCount
@@ -271,16 +280,20 @@ CreateNewBox PROC
 		boxHeight,[hRowBox+4*ebx],ToRowBox,hInstance,NULL
 	.IF eax == 0
 		call ErrorHandler
-		pop eax
 		ret
 	.ENDIF
 	mov [hStatic+4*ebx], eax
+	INVOKE ShowWindow, [hStatic+4*ebx], SW_SHOW
+	INVOKE SendMessage, [hStatic+4*ebx], WM_SETFONT, StaticFont, 1
 
 	mov edx, WndRect.bottom
 	sub edx, WndRect.top
+	mov eax, WndRect.right
+	sub eax, WndRect.left
+	sub eax, 100
 	INVOKE CreateWindowEx, 0, ADDR EDIT,
 		NULL, WS_CHILD+WS_VISIBLE+ES_LEFT, 
-		staticWidth, 0, eax, 
+		staticWidth, editMarginTop, eax, 
 		edx,[hRowBox+4*ebx],ToRowBox,hInstance,NULL
 	.IF eax == 0
 		call ErrorHandler
@@ -288,6 +301,7 @@ CreateNewBox PROC
 	.ENDIF
 	mov [hEditWnd+4*ebx], eax
 	INVOKE ShowWindow, [hEditWnd+4*ebx], SW_SHOW
+	INVOKE SendMessage, [hEditWnd+4*ebx], WM_SETFONT, StandardFont, 1
 	INVOKE SetWindowLong, [hEditWnd+4*ebx], GWLP_WNDPROC, ADDR EditProc
 	.IF eax == 0
 		call ErrorHandler
