@@ -6,7 +6,7 @@ BoolOr PROTO :BYTE, :BYTE
 BoolXor PROTO :BYTE, :BYTE
 
 ;ToBool PROTO :DWORD, :WORD
-LongToBool PROTO :DWORD
-DoubleToBool PROTO :DWORD
+;LongToBool PROTO :DWORD
+;DoubleToBool PROTO :DWORD
 
 ENDIF

@@ -21,13 +21,15 @@ recvBuffer BYTE MaxBufferSize DUP(0)
 ansBuffer BYTE MaxBufferSize DUP(0)
 public recvBuffer, ansBuffer
 
-OperatorTable BYTE "^                              ",0
+OperatorTable BYTE "=                              ",0
+			  BYTE "^                              ",0
 			  BYTE "* /							   ",0
 			  BYTE "+ -                            ",0
 			  BYTE "ABS NEG IN OUT                 ",0
 			  BYTE "== && ||                       ",0
 ; Type: lower bit 0 for binary, 1 for unary; second bit 0 for operator, 1 for function
 OperatorType  BYTE " 0                             ",0
+			  BYTE " 0                             ",0
 			  BYTE " 0 0                           ",0
 			  BYTE " 0 0                           ",0
 			  BYTE "   3   3  3   3                ",0
@@ -561,8 +563,8 @@ CalculateOp PROC,
 			INVOKE LongEqu, long1Addr, long2Addr
 			INVOKE TopPush, long1Addr, 1, TYPE_BOOL
 		.ELSEIF WORD PTR [eax] == 2626h
-			INVOKE LongToBool, long1Addr
-			INVOKE LongToBool, long2Addr
+			;INVOKE LongToBool, long1Addr
+			;INVOKE LongToBool, long2Addr
 			INVOKE BoolAnd, long1, long2
 			mov long1, al
 			INVOKE TopPush, long1Addr, 1, TYPE_BOOL
