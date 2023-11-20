@@ -19,13 +19,23 @@ include			rowBox.inc
 include			macro.inc
 
 MSGStruct STRUCT
-  msgWnd        DWORD ?
-  msgMessage    DWORD ?
-  msgWparam     DWORD ?
-  msgLparam     DWORD ?
-  msgTime       DWORD ?
-  msgPt         POINT <>
+	msgWnd        DWORD ?
+	msgMessage    DWORD ?
+	msgWparam     DWORD ?
+	msgLparam     DWORD ?
+	msgTime       DWORD ?
+	msgPt         POINT <>
 MSGStruct ENDS
+
+SCROLLINFO STRUCT
+	cbSize        DWORD ?
+	fMask		  DWORD ?
+	nMin		  DWORD ?
+	nMax		  DWORD ?
+	nPage		  DWORD ?
+	nPos		  DWORD ?
+	nTrackPos	  DWORD ?
+SCROLLINFO ENDS
 
 MAIN_WINDOW_STYLE = WS_VISIBLE+WS_DLGFRAME+WS_CAPTION+WS_BORDER+WS_SYSMENU \
 	+WS_MAXIMIZEBOX+WS_MINIMIZEBOX+WS_THICKFRAME+WS_VSCROLL
@@ -57,6 +67,7 @@ sub2ndMsg  BYTE "Open",0
 
 msg	      MSGStruct <>
 winRect   RECT <>
+mainScroll    SCROLLINFO <>
 
 hMainWnd  DWORD 0
 public hMainWnd
@@ -75,6 +86,7 @@ MainWin WNDCLASS <NULL,WinProc,NULL,NULL,NULL,NULL,NULL, \
 .code
 
 InitMenu PROTO 
+ErrorHandler PROTO
 WinMain PROC
 
 ; init the FPU
@@ -119,6 +131,15 @@ WinMain PROC
 ; Create a menu
 	INVOKE InitMenu
 
+; init scrollbar
+	mov eax, SIZE mainScroll
+	mov mainScroll.cbSize, eax
+	mov mainScroll.fMask, SIF_ALL
+	mov mainScroll.nMin, 0
+	mov mainScroll.nMax, 30000
+	mov mainScroll.nPage, 1
+	INVOKE SetScrollInfo, hMainWnd, SB_VERT, ADDR mainScroll, 1
+
 ; Show and draw the window.
 	INVOKE ShowWindow, hMainWnd, SW_SHOW
 	INVOKE UpdateWindow, hMainWnd
@@ -160,7 +181,33 @@ InitMenu PROC
 	INVOKE AppendMenuA, hSubMenu, 0, NULL, ADDR sub2ndMsg
 	INVOKE AppendMenuA, hFileMenu, 10h, hSubMenu, ADDR fileMsg
 	INVOKE SetMenu, hMainWnd, hFileMenu
+	ret
 InitMenu ENDP
+
+;-----------------------------------------------------
+ScrollingWindow PROC,
+	dist:DWORD
+; Move the window by distance, a positive value for rolling down,
+; negative for rolling up.
+;-----------------------------------------------------
+	LOCAL oldPos:DWORD
+	mov eax, SIZE mainScroll
+	mov mainScroll.cbSize, eax
+	mov mainScroll.fMask, SIF_ALL
+	INVOKE GetScrollInfo, hMainWnd, SB_VERT, ADDR mainScroll
+	mov eax, mainScroll.nPos
+	mov oldPos, eax
+	mov eax, dist
+	add mainScroll.nPos, eax
+	mov mainScroll.fMask, SIF_POS
+	INVOKE SetScrollInfo, hMainWnd, SB_VERT, ADDR mainScroll, 1
+	INVOKE GetScrollInfo, hMainWnd, SB_VERT, ADDR mainScroll
+	INVOKE GetWindowRect, hMainWnd, ADDR winRect
+	mov eax, oldPos
+	sub eax, mainScroll.nPos
+	INVOKE ScrollWindow, hMainWnd, 0, eax, 0, ADDR winRect
+	ret
+ScrollingWindow ENDP
 
 ;-----------------------------------------------------
 WinProc PROC,
@@ -180,6 +227,36 @@ WinProc PROC,
 		jmp WinProcExit
 	.ELSEIF eax == WM_SIZE
 		INVOKE ChangeBoxSize
+	.ELSEIF eax == WM_VSCROLL
+		mov eax, SIZE mainScroll
+		mov mainScroll.cbSize, eax
+		mov mainScroll.fMask, SIF_ALL
+		INVOKE GetScrollInfo, hWnd, SB_VERT, ADDR mainScroll
+		mov ebx, wParam
+		.IF bx == SB_LINEUP
+			INVOKE ScrollingWindow, -30
+		.ELSEIF bx == SB_LINEDOWN
+			INVOKE ScrollingWindow, 30
+		.ELSEIF bx == SB_PAGEUP
+			INVOKE ScrollingWindow, -30
+		.ELSEIF bx == SB_PAGEDOWN
+			INVOKE ScrollingWindow, 30
+		.ELSEIF bx == SB_THUMBPOSITION
+			mov eax, mainScroll.nTrackPos
+			sub eax, mainScroll.nPos
+			INVOKE ScrollingWindow, eax
+		.ENDIF
+	.ELSEIF eax == WM_MOUSEWHEEL
+		mov eax, SIZE mainScroll
+		mov mainScroll.cbSize, eax
+		mov mainScroll.fMask, SIF_ALL
+		INVOKE GetScrollInfo, hWnd, SB_VERT, ADDR mainScroll
+		mov eax, wParam
+		.IF eax < 80000000h
+			INVOKE ScrollingWindow, -30
+		.ELSE
+			INVOKE ScrollingWindow, 30
+		.ENDIF
 	.ENDIF
 	INVOKE DefWindowProc, hWnd, localMsg, wParam, lParam
 
