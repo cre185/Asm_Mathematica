@@ -122,84 +122,29 @@ LongSub PROC,
 LongSub ENDP
 
 ;---------------------------------------------------------------------------
-LongMaskLastNBits PROC,
-    longAddr: DWORD, n: DWORD
-; This procedure masks the last n bits of a QWORD.
+LongEqu PROC,
+    longAddr1: DWORD, longAddr2:DWORD
+; This procedure determines whether long1 equals to long2
 ;---------------------------------------------------------------------------
     pushad
-    ; a simple method: 111...1 (n 1's)  = 1<<n - 1
-    .IF n < 32
-        ; put 1 in longAddr + 4 's higher n bits
-        mov ebx, [longAddr]
-        mov DWORD PTR [ebx], 0
-        mov DWORD PTR [ebx+4], 0 ; set to 64-bit 0's
-        mov eax, 1
-        mov ecx, n
-        SHL eax, cl
-        DEC eax
-        mov ebx, [longAddr]
-        mov [ebx+4], eax
+    mov esi, [longAddr1]
+    mov edi, [longAddr2]
+    mov eax, [esi]
+    mov edx, [edi]
+    .IF eax == edx
+        mov eax, [esi+4]
+        mov edx, [edi+4]
+        .IF eax == edx 
+            mov BYTE PTR [esi], 1
+        .ELSE
+            mov BYTE PTR [esi], 0
+        .ENDIF
     .ELSE
-        ; n >= 32
-        ; put 1 in longAddr + 4
-        mov ebx, [longAddr]
-        mov DWORD PTR [ebx+4], 0FFFFFFFFh
-        mov DWORD PTR [ebx], 0
-        mov eax, 1
-        mov ecx, n
-        SUB ecx, 32
-        SHL eax, cl
-        DEC eax
-        mov ebx, [longAddr]
-        mov [ebx], eax
+        mov BYTE PTR [esi], 0
     .ENDIF
     popad
     ret
-LongMaskLastNBits ENDP
-
-;---------------------------------------------------------------------------
-LongMaskNotLastNBits PROC,
-    longAddr: DWORD, n: DWORD
-; This procedure masks the not-last n bits of a QWORD.
-;---------------------------------------------------------------------------
-    pushad
-    INVOKE LongMaskLastNBits, longAddr, n
-    mov eax, [longAddr]
-    NOT eax
-    mov [longAddr], eax
-    mov eax, [longAddr + 4]
-    NOT eax
-    mov ebx, [longAddr]
-    mov [ebx+4], eax
-    popad
-    ret
-LongMaskNotLastNBits ENDP
-
-;---------------------------------------------------------------------------
-LongLShift PROC,
-    longAddr: DWORD, shiftCount: DWORD
-; This procedure shifts a QWORD to the left by shiftCount bits.
-;---------------------------------------------------------------------------
-    ; use rotate left
-    ; bits rotated to the right 
-    pushad
-    mov ecx, shiftCount
-    mov ebx, [longAddr]
-    .WHILE ecx > 0
-        mov eax, [ebx]
-        mov edx, [ebx+4]
-        shl eax, 1
-        shl edx, 1
-        .IF OVERFLOW?
-            inc eax
-        .ENDIF
-        mov [ebx], eax
-        mov [ebx+4], edx
-        dec ecx
-    .ENDW
-    popad
-    ret
-LongLShift ENDP
+LongEqu ENDP
 
 ;---------------------------------------------------------------------------
 LongAnd PROC,

@@ -41,16 +41,16 @@ Hash PROC,
 ; puts the hash value in outHashAddr
 ;---------------------------------------------------------------------------
     ; e.g. for varName = "Example":
-    ; hashVal = ("E"*2^14 + "x"*2^13 + "a"*2^12 + "m"*2^11 + "p"*2^10 + "l"*2^9 + "e"*2^8) % MaxVariableHashTableSize
+    ; hashVal = ("E"*2^10 + "x"*2^9 + "a"*2^8 + "m"*2^7 + "p"*2^6 + "l"*2^5 + "e"*2^4) % MaxVariableHashTableSize
     ; using the formula: hashVal = sum(varName[i]*2^(n-i-1)), where n = SIZEOF(varName)
     ; hashVal in [0, MaxVariableHashTableSize-1]
     LOCAL sum: DWORD, i:DWORD
     pushad
     mov ebx, inStrAddr
-    mov ecx, 14
+    mov ecx, 10
     mov sum, 0 ; set sum to 0
     mov i, 0 ; set i to 0
-    .WHILE i < 15 && BYTE PTR [ebx] != 0
+    .WHILE i < 11 && BYTE PTR [ebx] != 0
         mov al, BYTE PTR [ebx]
         shl eax, cl ; eax = al*2^cl
         add sum, eax ; sum = sum + al*2^cl

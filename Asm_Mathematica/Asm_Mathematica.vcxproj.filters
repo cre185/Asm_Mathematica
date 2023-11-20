@@ -36,6 +36,9 @@
     <MASM Include="variables.asm">
       <Filter>源文件</Filter>
     </MASM>
+    <MASM Include="boolean.asm">
+      <Filter>源文件</Filter>
+    </MASM>
   </ItemGroup>
   <ItemGroup>
     <None Include="calculate.inc">
@@ -60,6 +63,9 @@
       <Filter>头文件</Filter>
     </None>
     <None Include="variables.inc">
+      <Filter>头文件</Filter>
+    </None>
+    <None Include="boolean.inc">
       <Filter>头文件</Filter>
     </None>
   </ItemGroup>
