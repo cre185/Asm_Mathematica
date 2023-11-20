@@ -25,13 +25,13 @@ OperatorTable BYTE "^                              ",0
 			  BYTE "* /							   ",0
 			  BYTE "+ -                            ",0
 			  BYTE "ABS NEG IN OUT                 ",0
-			  BYTE "==                             ",0
+			  BYTE "== && ||                       ",0
 ; Type: lower bit 0 for binary, 1 for unary; second bit 0 for operator, 1 for function
 OperatorType  BYTE " 0                             ",0
 			  BYTE " 0 0                           ",0
 			  BYTE " 0 0                           ",0
 			  BYTE "   3   3  3   3                ",0
-			  BYTE "  0                            ",0
+			  BYTE "  0  0  0                      ",0
 OperatorList BYTE OperatorListLength DUP(0)
 OpTypeList   BYTE OperatorListLength DUP(0)
 
@@ -560,6 +560,12 @@ CalculateOp PROC,
 		.ELSEIF WORD PTR [eax] == 3d3dh
 			INVOKE LongEqu, long1Addr, long2Addr
 			INVOKE TopPush, long1Addr, 1, TYPE_BOOL
+		.ELSEIF WORD PTR [eax] == 2626h
+			INVOKE LongToBool, long1Addr
+			INVOKE LongToBool, long2Addr
+			INVOKE BoolAnd, long1, long2
+			mov long1, al
+			INVOKE TopPush, long1Addr, 1, TYPE_BOOL
 		.ELSE 
 			INVOKE TopPushStandardError
 		.ENDIF
@@ -589,6 +595,9 @@ CalculateOp PROC,
 		.ELSEIF BYTE PTR [eax] == 47
 			INVOKE DoubleDiv, long2Addr, long1Addr
 			INVOKE TopPush, long2Addr, 8, TYPE_DOUBLE
+		.ELSEIF WORD PTR [eax] == 3d3dh
+			INVOKE DoubleEqu, long1Addr, long2Addr
+			INVOKE TopPush, long1Addr, 1, TYPE_BOOL
 		.ELSE
 			INVOKE TopPushStandardError
 		.ENDIF
