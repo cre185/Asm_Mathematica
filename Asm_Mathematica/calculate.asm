@@ -20,13 +20,17 @@ recvBuffer BYTE MaxBufferSize DUP(0)
 ansBuffer BYTE MaxBufferSize DUP(0)
 public recvBuffer, ansBuffer
 
-OperatorTable BYTE "* / ^                          ",0
+OperatorTable BYTE "^                              ",0
+			  BYTE "* /							   ",0
 			  BYTE "+ -                            ",0
 			  BYTE "ABS NEG IN OUT                 ",0
+			  BYTE "==                             ",0
 ; Type: lower bit 0 for binary, 1 for unary; second bit 0 for operator, 1 for function
-OperatorType  BYTE " 0 0 0                         ",0
+OperatorType  BYTE " 0                             ",0
+			  BYTE " 0 0                           ",0
 			  BYTE " 0 0                           ",0
 			  BYTE "   3   3  3   3                ",0
+			  BYTE "  0                            ",0
 OperatorList BYTE OperatorListLength DUP(0)
 OpTypeList   BYTE OperatorListLength DUP(0)
 

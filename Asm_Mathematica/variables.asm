@@ -4,6 +4,7 @@ option casemap: none
 
 include  		calculate.inc
 include			macro.inc
+strcmp          PROTO C :ptr sbyte, :ptr sbyte
 strncpy			PROTO C :ptr sbyte, :ptr sbyte, :DWORD
 strcpy			PROTO C :ptr sbyte, :ptr sbyte
 strcat			PROTO C :ptr sbyte, :ptr sbyte
@@ -11,7 +12,7 @@ memset			PROTO C :ptr sbyte, :DWORD, :DWORD
 strlen			PROTO C :ptr sbyte
 
 .data
-variableHashTable BYTE MaxVariableHashTableSize DUP(48)
+variableHashTable BYTE MaxVariableHashTableSize*256 DUP(0) ; MaxVariableHashTableSize elems, each elem is 256 bytes
 
 .code
 ;---------------------------------------------------------------------------
@@ -39,59 +40,143 @@ Hash PROC,
 ; gets a string from inStrAddr, and calculates its hash value
 ; puts the hash value in outHashAddr
 ;---------------------------------------------------------------------------
-    ; e.g. for varName = "ShiLIBianLiang"
-    ; sum = g + 16*n + 16^2*a + ... + 16^13*S
-    ; hash = sum % MaxVariableHashTableSize
+    ; e.g. for varName = "Example":
+    ; hashVal = ("E"*2^14 + "x"*2^13 + "a"*2^12 + "m"*2^11 + "p"*2^10 + "l"*2^9 + "e"*2^8) % MaxVariableHashTableSize
+    ; using the formula: hashVal = sum(varName[i]*2^(n-i-1)), where n = SIZEOF(varName)
+    ; hashVal in [0, MaxVariableHashTableSize-1]
+    LOCAL sum: DWORD, i:DWORD
+    pushad
+    mov ebx, inStrAddr
+    mov ecx, 14
+    mov sum, 0 ; set sum to 0
+    mov i, 0 ; set i to 0
+    .WHILE i < 15 && BYTE PTR [ebx] != 0
+        mov al, BYTE PTR [ebx]
+        shl eax, cl ; eax = al*2^cl
+        add sum, eax ; sum = sum + al*2^cl
+        inc ebx
+        inc i
+        dec ecx
+    .ENDW
+    ; then: get sum % MaxVariableHashTableSize into outHashAddr
+    mov eax, sum
+    mov ebx, MaxVariableHashTableSize
+    div ebx ; eax = sum / MaxVariableHashTableSize, edx = sum % MaxVariableHashTableSize
+    mov ecx, outHashAddr
+    mov [ecx], edx ; put remainder in outHashAddr
+    popad
     ret
 Hash ENDP
 
 ;---------------------------------------------------------------------------
 GetElemVarNameSize PROC,
-    ptrAddr: DWORD, varNameSizeAddr: DWORD
-; puts the variable name size of the element pointed by ptrAddr in varNameSizeAddr
+    elemPtr: DWORD, varNameSizeAddr: DWORD
+; puts the variable name size of the element pointed by elemPtr in varNameSizeAddr
 ;---------------------------------------------------------------------------
+    pushad
+    mov ebx, elemPtr ; points at the element head, then:
+    mov ax, WORD PTR [ebx] ; read 2 bytes from [ebx] to ax
+    mov edx, varNameSizeAddr
+    mov [edx], ax
+    popad
     ret
 GetElemVarNameSize ENDP
 
 ;---------------------------------------------------------------------------
 GetElemVarName PROC,
-    ptrAddr: DWORD, varNameAddr: DWORD
-; puts the variable name of the element pointed by ptrAddr in varNameAddr
+    elemPtr: DWORD, varNameAddr: DWORD
+; puts the variable name of the element pointed by elemPtr in varNameAddr
 ;---------------------------------------------------------------------------
+    LOCAL varNameSize: WORD
+    pushad
+    INVOKE GetElemVarNameSize, elemPtr, ADDR varNameSize
+    ; now in varNameSize we have the variable name size
+    ; load varNameSize bytes from elemPtr + 2 to varNameAddr
+    mov esi, elemPtr
+    add esi, 2 ; esi points at the variable name
+    mov edi, varNameAddr
+    mov cx, varNameSize
+    .WHILE ecx > 0
+        mov al, BYTE PTR [esi]
+        mov BYTE PTR [edi], al
+        inc esi
+        inc edi
+        dec ecx
+    .ENDW
+    mov BYTE PTR [edi], 0 ; terminate the string
+    popad
     ret
 GetElemVarName ENDP
 
 ;---------------------------------------------------------------------------
 GetElemVarType PROC,
-    ptrAddr: DWORD, varTypeAddr: DWORD
-; puts the variable type of the element pointed by ptrAddr in varTypeAddr
+    elemPtr: DWORD, varTypeAddr: DWORD
+; puts the variable type of the element pointed by elemPtr in varTypeAddr
 ;---------------------------------------------------------------------------
+    LOCAL varNameSize: WORD
+    pushad
+    INVOKE GetElemVarNameSize, elemPtr, ADDR varNameSize
+    mov ebx, elemPtr
+    add ebx, 2 ; ebx points at the variable name
+    mov dx, varNameSize
+    add ebx, edx ; ebx points at the variable type
+    ; read 1 byte from [ebx] to varTypeAddr
+    mov edx, varTypeAddr
+    mov al, BYTE PTR [ebx]
+    mov BYTE PTR [edx], al
+    popad
     ret
 GetElemVarType ENDP
 
 ;---------------------------------------------------------------------------
 GetElemVarSize PROC,
-    ptrAddr: DWORD, varSizeAddr: DWORD
-; puts the variable size of the element pointed by ptrAddr in varSizeAddr
+    elemPtr: DWORD, varSizeAddr: DWORD
+; puts the variable size of the element pointed by elemPtr in varSizeAddr
 ;---------------------------------------------------------------------------
+    LOCAL varNameSize: WORD
+    pushad
+    INVOKE GetElemVarNameSize, elemPtr, ADDR varNameSize
+    mov ebx, elemPtr
+    add ebx, 2 ; ebx points at the variable name
+    mov dx, varNameSize
+    add ebx, edx ; ebx points at the variable type
+    inc ebx ; ebx points at the variable size
+    ; read 2 bytes from [ebx] to varSizeAddr
+    mov edx, varSizeAddr
+    mov ax, WORD PTR [ebx]
+    mov WORD PTR [edx], ax
+    popad
     ret
 GetElemVarSize ENDP
 
 ;---------------------------------------------------------------------------
 GetElemVarValue PROC,
-    ptrAddr: DWORD, varValueAddr: DWORD
-; puts the variable value of the element pointed by ptrAddr in varValueAddr
+    elemPtr: DWORD, varValueAddr: DWORD
+; puts the variable value of the element pointed by elemPtr in varValueAddr
 ;---------------------------------------------------------------------------
+    LOCAL varNameSize: WORD, varSize: WORD
+    pushad
+    INVOKE GetElemVarNameSize, elemPtr, ADDR varNameSize
+    INVOKE GetElemVarSize, elemPtr, ADDR varSize
+    mov ebx, elemPtr
+    add ebx, 2 ; ebx points at the variable name
+    mov dx, varNameSize
+    add ebx, edx ; ebx points at the variable type
+    add ebx, 3 ; ebx points at the variable value
+    ; read varSize bytes from [ebx] to varValueAddr
+    mov esi, ebx
+    mov edi, varValueAddr
+    mov cx, varSize
+    .WHILE ecx > 0
+        mov al, BYTE PTR [esi]
+        mov BYTE PTR [edi], al
+        inc esi
+        inc edi
+        dec ecx
+    .ENDW
+    popad
     ret
 GetElemVarValue ENDP
-
-;---------------------------------------------------------------------------
-ToNextElem PROC,
-    ptrAddr: DWORD
-; let ptrAddr point to the next element in the hash table
-;---------------------------------------------------------------------------
-    ret
-ToNextElem ENDP
 
 ;---------------------------------------------------------------------------
 HashTableInsert PROC,
@@ -100,6 +185,47 @@ HashTableInsert PROC,
 ; VAR_NAME_SIZE = SIZEOF(inStrAddr), VAR_NAME = inStrAddr
 ; VAR_TYPE = inType, VAR_SIZE = inSize, VAR_VALUE = inValueAddr
 ;---------------------------------------------------------------------------
+    LOCAL hashVal: DWORD, inStrSize: WORD, varNameSize: WORD, tmpStr[256]: BYTE
+    pushad
+    INVOKE Hash, inStrAddr, ADDR hashVal ; get the hashVal of inStrAddr
+    mov eax, hashVal
+    shl eax, 8 ; eax = hashVal * 256
+    ; now we wish to find the elem in variableHashTable[hashVal]
+    mov edi, OFFSET variableHashTable
+    add edi, eax ; edi points at the first elem in the hash table
+    ; get the var name size
+    INVOKE GetElemVarNameSize, elemPtr, ADDR varNameSize
+    mov bx, varNameSize
+    cmp bx, 0
+    jne collision ; if not empty, collision occurs
+    insertIntoHashTable:
+        ; 1. var name size
+        INVOKE strlen, inStrAddr
+        mov WORD PTR [edi], ax ; put the size of inStrAddr in the first 2 bytes of the elem
+        add edi, 2
+        ; 2. var name
+        push edi
+        push eax
+        INVOKE strcpy, edi, inStrAddr ; put inStrAddr ---> edi
+        pop eax
+        pop edi
+        add edi, eax
+        ; 3. var type
+        mov al, inType
+        mov BYTE PTR [edi], al
+        add edi, 1 
+        ; 4. var size
+        mov ax, inSize
+        mov WORD PTR [edi], ax
+        add edi, 2
+        ; 5. var value
+        INVOKE strcpy, edi, inValueAddr ; put inValueAddr ---> edi
+        ; done
+        popad
+        ret
+    collision:
+        ; todo: collision handling
+    popad
     ret
 HashTableInsert ENDP
 

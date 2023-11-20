@@ -12,7 +12,7 @@ strlen			PROTO C :ptr sbyte
 
 .data
 
-calculationStack BYTE MaxMathStackSize DUP(48)
+calculationStack BYTE MaxMathStackSize DUP(0)
 calculationStackTop DWORD calculationStack
 calculationStackBase DWORD calculationStack
 public calculationStack, calculationStackTop, calculationStackBase
