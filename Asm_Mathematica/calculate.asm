@@ -37,6 +37,8 @@ OpTypeList   BYTE OperatorListLength DUP(0)
 TestTitle BYTE "test",0
 TestText BYTE "reached here!",0
 InOutError BYTE "Invalid use of IN/OUT!",0
+TrueText BYTE "True",0
+FalseText BYTE "False",0
 
 CalCount DWORD 0
 public CalCount
@@ -554,6 +556,8 @@ CalculateOp PROC,
 		.ELSEIF BYTE PTR [eax] == 94
 			INVOKE LongExp, long2Addr, long1Addr
 			INVOKE TopPush, long2Addr, 8, TYPE_INT
+		.ELSE 
+			INVOKE TopPushStandardError
 		.ENDIF
 	.ELSEIF type1 == TYPE_DOUBLE || type2 == TYPE_DOUBLE
 		.IF BYTE PTR [eax] == 94
@@ -581,6 +585,8 @@ CalculateOp PROC,
 		.ELSEIF BYTE PTR [eax] == 47
 			INVOKE DoubleDiv, long2Addr, long1Addr
 			INVOKE TopPush, long2Addr, 8, TYPE_DOUBLE
+		.ELSE
+			INVOKE TopPushStandardError
 		.ENDIF
 	.ENDIF
 	popad
@@ -685,6 +691,15 @@ CalculatePN PROC
 		INVOKE LongToStr, ADDR ansBuffer
 	.ELSEIF finalType == TYPE_DOUBLE
 		INVOKE DoubleToStr, ADDR ansBuffer
+	.ELSEIF finalType == TYPE_BOOL
+		mov eax, offset ansBuffer
+		mov bl, [eax]
+		INVOKE memset, ADDR ansBuffer, 0, MaxBufferSize
+		.IF bl == 0
+			INVOKE strcpy, ADDR ansBuffer, ADDR FalseText
+		.ELSE
+			INVOKE strcpy, ADDR ansBuffer, ADDR TrueText
+		.ENDIF
 	.ELSEIF finalType == TYPE_ERROR || finalType == TYPE_VOID
 		; actually nothing is needed. 
 	.ENDIF
