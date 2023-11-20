@@ -280,7 +280,8 @@ HashTableSearch PROC,
             ; empty
             ; not found
             mov ebx, outPtrAddr
-            mov [ebx], 0
+            mov edx, 0
+            mov [ebx], edx
             popad
         .ENDIF
         INVOKE GetElemVarName, edi, ADDR tmpStr
