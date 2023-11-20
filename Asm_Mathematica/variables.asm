@@ -194,7 +194,7 @@ HashTableInsert PROC,
     mov edi, OFFSET variableHashTable
     add edi, eax ; edi points at the first elem in the hash table
     ; get the var name size
-    INVOKE GetElemVarNameSize, elemPtr, ADDR varNameSize
+    INVOKE GetElemVarNameSize, edi, ADDR varNameSize
     mov bx, varNameSize
     cmp bx, 0
     jne collision ; if not empty, collision occurs
@@ -204,11 +204,9 @@ HashTableInsert PROC,
         mov WORD PTR [edi], ax ; put the size of inStrAddr in the first 2 bytes of the elem
         add edi, 2
         ; 2. var name
-        push edi
-        push eax
+        pushad
         INVOKE strcpy, edi, inStrAddr ; put inStrAddr ---> edi
-        pop eax
-        pop edi
+        popad
         add edi, eax
         ; 3. var type
         mov al, inType
@@ -224,16 +222,80 @@ HashTableInsert PROC,
         popad
         ret
     collision:
-        ; todo: collision handling
+        ; hash collision!
+        ; first check if is empty
+        ; then check if is the same variable. if so, update the value
+        ; else: go to the next elem
+        INVOKE GetElemVarNameSize, edi, ADDR varNameSize
+        .IF varNameSize == 0
+            ; empty
+            jmp insertIntoHashTable
+        .ENDIF
+        INVOKE GetElemVarName, edi, ADDR tmpStr
+        INVOKE strcmp, inStrAddr, ADDR tmpStr
+        ; eax == 0 if the two strings are the same
+        ; eax != 0 if the two strings are different
+        .IF eax == 0
+            ; same var
+            jmp insertIntoHashTable
+        .ENDIF
+        ; not the same var
+        ; go for next elem
+        add edi, 256
+        jmp collision
     popad
     ret
 HashTableInsert ENDP
 
 ;---------------------------------------------------------------------------
 HashTableSearch PROC,
-    inStrAddr: DWORD, outAddr: DWORD
-; returns the address of the variable in the hash table
+    inStrAddr: DWORD, outPtrAddr: DWORD
+; puts the pointer to the desired elem (specified by inStrAddr) in the given addr
 ;---------------------------------------------------------------------------
+    LOCAL hashVal: DWORD, inStrSize: WORD, varNameSize: WORD, tmpStr[256]: BYTE
+    pushad
+    INVOKE Hash, inStrAddr, ADDR hashVal ; get the hashVal of inStrAddr
+    mov eax, hashVal
+    shl eax, 8 ; eax = hashVal * 256
+    ; now we wish to find the elem in variableHashTable[hashVal]
+    mov edi, OFFSET variableHashTable
+    add edi, eax ; edi points at the first elem in the hash table
+    ; get the var name size
+    INVOKE GetElemVarNameSize, edi, ADDR varNameSize
+    mov bx, varNameSize
+    cmp bx, 0
+    jne collision ; if not empty, collision occurs
+    noCollision:
+        mov ebx, outPtrAddr
+        mov [ebx], edi
+        popad
+        ret
+    collision:
+        ; hash collision!
+        ; first check if is empty
+        ; then check if is the same variable. if so, update the value
+        ; else: go to the next elem
+        INVOKE GetElemVarNameSize, edi, ADDR varNameSize
+        .IF varNameSize == 0
+            ; empty
+            ; not found
+            mov ebx, outPtrAddr
+            mov [ebx], 0
+            popad
+        .ENDIF
+        INVOKE GetElemVarName, edi, ADDR tmpStr
+        INVOKE strcmp, inStrAddr, ADDR tmpStr
+        ; eax == 0 if the two strings are the same
+        ; eax != 0 if the two strings are different
+        .IF eax == 0
+            ; same var
+            jmp noCollision
+        .ENDIF
+        ; not the same var
+        ; go for next elem
+        add edi, 256
+        jmp collision
+    popad
     ret
 HashTableSearch ENDP
 
