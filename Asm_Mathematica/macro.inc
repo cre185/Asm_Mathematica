@@ -11,7 +11,7 @@ OperatorListLength EQU 32
 OperatorTableHeight EQU 3
 OperatorTableLength EQU OperatorListLength*OperatorTableHeight
 
-MaxMathStackSize EQU 4096
+MaxMathStackSize EQU 32768
 TYPE_INT        EQU     0
 TYPE_DOUBLE     EQU     1
 TYPE_STRING     EQU     2

@@ -7,6 +7,7 @@ include			macro.inc
 include			mathStack.inc
 include			longInt.inc
 include			double.inc
+include			variables.inc
 strncpy			PROTO C :ptr sbyte, :ptr sbyte, :DWORD
 strcpy			PROTO C :ptr sbyte, :ptr sbyte
 strcat			PROTO C :ptr sbyte, :ptr sbyte

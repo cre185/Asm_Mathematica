@@ -24,10 +24,11 @@ standardError BYTE "Invalid expression!", 0
 ; in this source file we mainly wish to manage stack in a more accurate way.
 ; To achieve this, we defined a specific way to store infos in the stack
 ; From the bottom to the top of the stack, we have:
+; BOTTOM:|<--DATA BODY-->|<--DATA SIZE-->|<--DATA TYPE-->|:TOP
 ; 1. DATA BODY, which is the data we want to store, and
 ; 2. DATA SIZE, a WORD (2 BYTES) to store the size (i.e. the number of BYTES) of the data body
 ; 3. DATA TYPE, a BYTE to store the type of the data body
-;    ----ALL---POSSIBLE---TYPES----------
+;    --------------ALL---POSSIBLE---TYPES---------------
 ;    TYPE 00: INT           ---> integer    ---> 8 BYTES
 ;    TYPE 01: DOUBLE        ---> float      ---> 8 BYTES
 ;    TYPE 02: STRING        ---> string     ---> ? BYTES
