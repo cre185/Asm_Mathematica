@@ -142,8 +142,9 @@ DoubleEqu PROC,
 	mov eax, [doubleAddr1]
 	fld REAL8 PTR [eax]
 	mov eax, [doubleAddr2]
-	fld REAL8 PTR [eax]
-	fcom
+	fcomp REAL8 PTR [eax]
+	fnstsw ax
+    sahf
 	.IF ZERO?
 		mov eax, [doubleAddr1]
 		mov BYTE PTR [eax], 1
@@ -191,5 +192,34 @@ LongToDouble PROC,
 	popad
 	ret
 LongToDouble ENDP
+
+;-----------------------------------------------------
+ToDouble PROC,
+	dataAddr: DWORD, sizeAddr: DWORD, typeAddr:DWORD
+;-----------------------------------------------------
+	pushad
+	mov esi, [sizeAddr]
+    mov edi, [typeAddr]
+    mov edx, [dataAddr]
+	mov bl, [edi]
+	.IF bl == TYPE_DOUBLE
+		popad
+		ret
+	.ELSEIF bl == TYPE_INT
+		INVOKE LongToDouble, dataAddr
+	.ELSEIF bl == TYPE_BOOL
+		mov al, BYTE PTR [edx]
+		.IF al == 0
+			fldz
+		.ELSE
+			fld1
+		.ENDIF
+		fstp REAL8 PTR [edx]
+	.ENDIF
+	mov BYTE PTR [edx], TYPE_BOOL
+	mov WORD PTR [esi], 8
+	popad
+	ret
+ToDouble ENDP
 
 END

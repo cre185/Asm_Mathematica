@@ -414,4 +414,34 @@ LongToStr PROC,
     popad
     ret
 LongToStr ENDP
+
+;---------------------------------------------------------------------------
+ToLong PROC,
+    dataAddr:DWORD, sizeAddr:DWORD, typeAddr:DWORD
+; This procedure calculates long1 Exp long2
+;---------------------------------------------------------------------------
+    pushad
+    mov esi, [sizeAddr]
+    mov edi, [typeAddr]
+    mov edx, [dataAddr]
+    mov bl, [edi]
+    .IF bl == TYPE_INT
+        popad
+        ret
+    .ELSEIF bl == TYPE_BOOL
+        mov al, [edx]
+        .IF al == 0
+            mov DWORD PTR [edx], 0
+            mov DWORD PTR [edx+4], 0
+        .ELSE
+            mov DWORD PTR [edx], 0
+            mov DWORD PTR [edx+4], 1
+        .ENDIF
+    .ENDIF
+    mov BYTE PTR [edi], TYPE_INT
+    mov WORD PTR [esi], 8
+    popad
+    ret
+ToLong ENDP
+
 END

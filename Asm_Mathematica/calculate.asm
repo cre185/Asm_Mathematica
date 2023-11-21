@@ -21,17 +21,17 @@ recvBuffer BYTE MaxBufferSize DUP(0)
 ansBuffer BYTE MaxBufferSize DUP(0)
 public recvBuffer, ansBuffer
 
-OperatorTable BYTE ":=                             ",0
-			  BYTE "* / ^                          ",0
+OperatorTable BYTE "* / ^                          ",0
 			  BYTE "+ -                            ",0
 			  BYTE "ABS NEG IN OUT                 ",0
 			  BYTE "== && ||                       ",0
+			  BYTE ":=                             ",0
 ; Type: lower bit 0 for binary, 1 for unary; second bit 0 for operator, 1 for function
-OperatorType  BYTE "  0                            ",0
-			  BYTE " 0 0 0                         ",0
+OperatorType  BYTE " 0 0 0                         ",0
 			  BYTE " 0 0                           ",0
 			  BYTE "   3   3  3   3                ",0
 			  BYTE "  0  0  0                      ",0
+			  BYTE "  0                            ",0
 OperatorList BYTE OperatorListLength DUP(0)
 OpTypeList   BYTE OperatorListLength DUP(0)
 
@@ -40,6 +40,7 @@ TestText BYTE "reached here!",0
 InOutError BYTE "Invalid use of IN/OUT!",0
 TrueText BYTE "True",0
 FalseText BYTE "False",0
+VarUndefinedText BYTE "Variable referenced before assigned!",0
 
 CalCount DWORD 0
 public CalCount
@@ -517,7 +518,7 @@ CalculateOp PROC,
 			.ENDIF
 		.ELSE
 			jmp BinaryOp
-		.ENDIF 
+		.ENDIF
 	.ELSEIF type1 == TYPE_DOUBLE
 		.IF DWORD PTR [eax] == 20534241h || DWORD PTR [eax] == 534241h
 			INVOKE DoubleAbs, long1Addr
@@ -530,6 +531,8 @@ CalculateOp PROC,
 		.ELSE
 			jmp BinaryOp
 		.ENDIF 
+	.ELSEIF type1 == TYPE_BOOL
+		jmp BinaryOp
 	.ELSEIF type1 == TYPE_ERROR
 		INVOKE TopPush, long1Addr, size1, type1
 	.ENDIF
@@ -544,15 +547,65 @@ CalculateOp PROC,
 	mov eax, [Op]
 	.IF type1 == TYPE_ERROR
 		INVOKE TopPush, long1Addr, size1, type1
+	.ELSEIF type2 == TYPE_ERROR
+		INVOKE TopPush, long2Addr, size2, type2
+	.ELSEIF type1 == TYPE_VAR
+		INVOKE TopPushError, ADDR VarUndefinedText
 	.ELSEIF type2 == TYPE_VAR
 		.IF WORD PTR [eax] == 3d3ah
 			; todo: ":=" handling
 			INVOKE HashTableInsert, long2Addr, type1, size1, long1Addr
 			INVOKE TopPush, long1Addr, size1, type1
 		.ENDIF
-	.ELSEIF type2 == TYPE_ERROR
-		INVOKE TopPush, long2Addr, size2, type2
-	.ELSEIF type1 == TYPE_INT && type2 == TYPE_INT
+	.ENDIF
+	; Ops that don't care about types
+	.IF WORD PTR [eax] == 2626h
+		INVOKE ToBool, long1Addr, size1Addr, type1Addr
+		INVOKE ToBool, long2Addr, size2Addr, type2Addr
+		INVOKE BoolAnd, long1, long2
+		mov long1, al
+		INVOKE TopPush, long1Addr, 1, TYPE_BOOL
+	.ELSEIF WORD PTR [eax] == 7c7ch
+		INVOKE ToBool, long1Addr, size1Addr, type1Addr
+		INVOKE ToBool, long2Addr, size2Addr, type2Addr
+		INVOKE BoolOr, long1, long2
+		mov long1, al
+		INVOKE TopPush, long1Addr, 1, TYPE_BOOL
+	.ENDIF
+	.IF type1 == TYPE_DOUBLE || type2 == TYPE_DOUBLE
+		INVOKE ToDouble, long1Addr, size1Addr, type1Addr
+		.IF BYTE PTR [eax] == 94
+			.IF type1 != TYPE_DOUBLE
+				INVOKE ToLong, long2Addr, size2Addr, type2Addr
+				INVOKE DoubleExp, long2Addr, long1Addr
+				INVOKE TopPush, long2Addr, 8, TYPE_DOUBLE
+			.ELSE
+				INVOKE TopPushStandardError
+			.ENDIF
+			jmp endFlag
+		.ENDIF
+		INVOKE ToDouble, long2Addr, size2Addr, type2Addr
+		.IF BYTE PTR [eax] == 43
+			INVOKE DoubleAdd, long1Addr, long2Addr
+			INVOKE TopPush, long1Addr, 8, TYPE_DOUBLE
+		.ELSEIF BYTE PTR [eax] == 42
+			INVOKE DoubleMul, long1Addr, long2Addr
+			INVOKE TopPush, long1Addr, 8, TYPE_DOUBLE
+		.ELSEIF BYTE PTR [eax] == 45
+			INVOKE DoubleSub, long2Addr, long1Addr
+			INVOKE TopPush, long2Addr, 8, TYPE_DOUBLE
+		.ELSEIF BYTE PTR [eax] == 47
+			INVOKE DoubleDiv, long2Addr, long1Addr
+			INVOKE TopPush, long2Addr, 8, TYPE_DOUBLE
+		.ELSEIF WORD PTR [eax] == 3d3dh
+			INVOKE DoubleEqu, long1Addr, long2Addr
+			INVOKE TopPush, long1Addr, 1, TYPE_BOOL
+		.ELSE
+			INVOKE TopPushStandardError
+		.ENDIF
+	.ELSEIF type1 == TYPE_INT || type2 == TYPE_INT
+		INVOKE ToLong, long1Addr, size1Addr, type1Addr
+		INVOKE ToLong, long2Addr, size2Addr, type2Addr
 		.IF BYTE PTR [eax] == 43
 			INVOKE LongAdd, long1Addr, long2Addr
 			INVOKE TopPush, long1Addr, 8, TYPE_INT
@@ -573,46 +626,7 @@ CalculateOp PROC,
 		.ELSEIF WORD PTR [eax] == 3d3dh
 			INVOKE LongEqu, long1Addr, long2Addr
 			INVOKE TopPush, long1Addr, 1, TYPE_BOOL
-		.ELSEIF WORD PTR [eax] == 2626h
-			INVOKE LongToBool, long1Addr
-			INVOKE LongToBool, long2Addr
-			INVOKE BoolAnd, long1, long2
-			mov long1, al
-			INVOKE TopPush, long1Addr, 1, TYPE_BOOL
 		.ELSE 
-			INVOKE TopPushStandardError
-		.ENDIF
-	.ELSEIF type1 == TYPE_DOUBLE || type2 == TYPE_DOUBLE
-		.IF BYTE PTR [eax] == 94
-			.IF type1 == TYPE_INT
-				INVOKE DoubleExp, long2Addr, long1Addr
-				INVOKE TopPush, long2Addr, 8, TYPE_DOUBLE
-			.ELSE
-				INVOKE TopPushStandardError
-			.ENDIF
-			jmp endFlag
-		.ENDIF
-		.IF type1 == TYPE_INT
-			INVOKE LongToDouble, long1Addr
-		.ELSEIF type2 == TYPE_INT
-			INVOKE LongToDouble, long2Addr
-		.ENDIF
-		.IF BYTE PTR [eax] == 43
-			INVOKE DoubleAdd, long1Addr, long2Addr
-			INVOKE TopPush, long1Addr, 8, TYPE_DOUBLE
-		.ELSEIF BYTE PTR [eax] == 42
-			INVOKE DoubleMul, long1Addr, long2Addr
-			INVOKE TopPush, long1Addr, 8, TYPE_DOUBLE
-		.ELSEIF BYTE PTR [eax] == 45
-			INVOKE DoubleSub, long2Addr, long1Addr
-			INVOKE TopPush, long2Addr, 8, TYPE_DOUBLE
-		.ELSEIF BYTE PTR [eax] == 47
-			INVOKE DoubleDiv, long2Addr, long1Addr
-			INVOKE TopPush, long2Addr, 8, TYPE_DOUBLE
-		.ELSEIF WORD PTR [eax] == 3d3dh
-			INVOKE DoubleEqu, long1Addr, long2Addr
-			INVOKE TopPush, long1Addr, 1, TYPE_BOOL
-		.ELSE
 			INVOKE TopPushStandardError
 		.ENDIF
 	.ENDIF
