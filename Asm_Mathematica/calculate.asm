@@ -577,6 +577,7 @@ CalculateOp PROC,
 			.ELSE
 				INVOKE TopPushStandardError
 			.ENDIF
+			jmp endFlag
 		.ENDIF
 		.IF type1 == TYPE_INT
 			INVOKE LongToDouble, long1Addr
@@ -602,6 +603,7 @@ CalculateOp PROC,
 			INVOKE TopPushStandardError
 		.ENDIF
 	.ENDIF
+	endFlag:
 	popad
 	ret
 CalculateOp ENDP
@@ -613,6 +615,7 @@ CalculatePN PROC
 	LOCAL currentNum: QWORD
 	LOCAL ansBufferLen: DWORD, ansBufferStartingLoc: DWORD
 	LOCAL tmpArray[MaxBufferSize]:BYTE, finalType:BYTE
+	LOCAL tmpType: BYTE, tmpSize: WORD, tmpData[128]:BYTE, tmpPtr:DWORD
 	INVOKE strcpy, ADDR ansBuffer, ADDR recvBuffer ; load the recvBuffer into ansBuffer
 	mov ecx, 0
 	mov ansBufferStartingLoc, 0
@@ -665,7 +668,26 @@ CalculatePN PROC
 				INVOKE strchr, ADDR tmpArray, cl
 				pop ecx
 				.IF eax != 0 ; all strings containing lowercase letters are interpreted as variable
-					; todo: treat variables here
+					; todo:  variable handling 
+					; we know that for now: tmpArray contains the name of the variable
+					; search in hash table
+					; if found, push the value into stack
+					; ELSE: push an var type into the stack
+					INVOKE HashTableSearch, ADDR tmpArray, ADDR tmpPtr
+					.IF tmpPtr == 0
+						; not found
+						INVOKE strlen, ADDR tmpArray ; get the length of the string into eax
+						INVOKE TopPush, ADDR tmpArray, ax, TYPE_VAR ; push the var into stack
+					.ELSE
+						; found
+						; 1. get the type and size and var
+						INVOKE GetElemVarType, tmpPtr, ADDR tmpType
+						INVOKE GetElemVarSize, tmpPtr, ADDR tmpSize
+						INVOKE GetElemVarValue, tmpPtr, ADDR tmpData
+						; push the var into stack
+						INVOKE TopPush, ADDR tmpData, tmpSize, tmpType
+					.ENDIF
+					jmp L4
 				.ENDIF
 				inc ecx
 			.ENDW

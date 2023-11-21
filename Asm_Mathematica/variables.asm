@@ -47,16 +47,17 @@ Hash PROC,
     LOCAL sum: DWORD, i:DWORD
     pushad
     mov ebx, inStrAddr
-    mov ecx, 10
+    mov ecx, MaxVariableHashTableSize
+    shr ecx, 1 ; ecx = MaxVariableHashTableSize / 2
     mov sum, 0 ; set sum to 0
     mov i, 0 ; set i to 0
-    .WHILE i < 11 && BYTE PTR [ebx] != 0
+    .WHILE ecx != 0 && BYTE PTR [ebx] != 0
         mov al, BYTE PTR [ebx]
-        shl eax, cl ; eax = al*2^cl
+        mul ecx ; eax = al*2^l
         add sum, eax ; sum = sum + al*2^cl
         inc ebx
         inc i
-        dec ecx
+        shr ecx, 1
     .ENDW
     ; then: get sum % MaxVariableHashTableSize into outHashAddr
     mov eax, sum
@@ -264,38 +265,38 @@ HashTableSearch PROC,
     INVOKE GetElemVarNameSize, edi, ADDR varNameSize
     mov bx, varNameSize
     cmp bx, 0
-    jne collision ; if not empty, collision occurs
-    noCollision:
-        mov ebx, outPtrAddr
-        mov [ebx], edi
-        popad
-        ret
-    collision:
-        ; hash collision!
+    je Empty ; if varNameSize == 0, then the elem is empty, ==> elem not found
+    ; not empty
+    ; go on to check if the var name is the same
+    L1:
         ; first check if is empty
-        ; then check if is the same variable. if so, update the value
-        ; else: go to the next elem
-        INVOKE GetElemVarNameSize, edi, ADDR varNameSize
+        INVOKE GetElemVarNameSize, edi, ADDR varNameSize 
         .IF varNameSize == 0
             ; empty
-            ; not found
-            mov ebx, outPtrAddr
-            mov edx, 0
-            mov [ebx], edx
-            popad
+            jmp Empty
         .ENDIF
+        ; not empty
         INVOKE GetElemVarName, edi, ADDR tmpStr
         INVOKE strcmp, inStrAddr, ADDR tmpStr
-        ; eax == 0 if the two strings are the same
-        ; eax != 0 if the two strings are different
         .IF eax == 0
-            ; same var
-            jmp noCollision
+            ; exists!
+            ; put current edi in outPtrAddr
+            mov ebx, outPtrAddr
+            mov [ebx], edi
+            popad
+            ret
         .ENDIF
         ; not the same var
-        ; go for next elem
+        ; just go on
         add edi, 256
-        jmp collision
+        jmp L1   
+    Empty:
+        ; put 0 in  outPtrAddr 
+        mov eax, 0
+        mov ebx, outPtrAddr
+        mov [ebx], eax
+        popad
+        ret
     popad
     ret
 HashTableSearch ENDP
