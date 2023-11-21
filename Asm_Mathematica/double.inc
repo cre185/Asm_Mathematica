@@ -16,4 +16,6 @@ DoubleNeg PROTO :DWORD
 
 DoubleEqu PROTO :DWORD, :DWORD
 
+ToDouble PROTO :DWORD, :DWORD, :DWORD
+
 ENDIF
