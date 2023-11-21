@@ -309,6 +309,10 @@ CreateNewBox PROC
 		call ErrorHandler
 	.ENDIF
 	mov originalEditProc, eax
+	mov eax, boxHeight
+	add eax, marginY
+	add eax, 3
+	INVOKE IncreaseScrollBarParam, eax
 
 	inc RowBoxCount
 	ret

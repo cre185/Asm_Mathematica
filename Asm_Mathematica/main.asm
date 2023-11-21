@@ -79,6 +79,9 @@ public hFileMenu, hSubMenu
 hInstance DWORD ?
 public hInstance
 
+scrollHeight DWORD 40h
+public scrollHeight
+
 ; Define the Application's Window class structure.
 MainWin WNDCLASS <NULL,WinProc,NULL,NULL,NULL,NULL,NULL, \
 	COLOR_WINDOW,NULL,className>
@@ -136,7 +139,7 @@ WinMain PROC
 	mov mainScroll.cbSize, eax
 	mov mainScroll.fMask, SIF_ALL
 	mov mainScroll.nMin, 0
-	mov mainScroll.nMax, 30000
+	mov mainScroll.nMax, 0
 	mov mainScroll.nPage, 1
 	INVOKE SetScrollInfo, hMainWnd, SB_VERT, ADDR mainScroll, 1
 
@@ -208,6 +211,33 @@ ScrollingWindow PROC,
 	INVOKE ScrollWindow, hMainWnd, 0, eax, 0, ADDR winRect
 	ret
 ScrollingWindow ENDP
+
+;-----------------------------------------------------
+IncreaseScrollBarParam PROC,
+	difH:DWORD
+; Change the height of the scrollbar
+;-----------------------------------------------------
+	pushad
+	mov eax, difH
+	add scrollHeight, eax
+	INVOKE GetScrollInfo, hMainWnd, SB_VERT, ADDR mainScroll
+	mov eax, SIZE mainScroll
+	mov mainScroll.cbSize, eax
+	mov mainScroll.fMask, SIF_ALL
+	mov mainScroll.nMin, 0
+	INVOKE GetWindowRect, hMainWnd, ADDR winRect
+	mov eax, scrollHeight
+	sub eax, winRect.bottom
+	.IF eax < 80000000h
+		mov mainScroll.nMax, eax
+	.ELSE
+		mov mainScroll.nMax, 0
+	.ENDIF
+	mov mainScroll.nPage, 1
+	INVOKE SetScrollInfo, hMainWnd, SB_VERT, ADDR mainScroll, 1
+	popad
+	ret
+IncreaseScrollBarParam ENDP
 
 ;-----------------------------------------------------
 WinProc PROC,
