@@ -9,5 +9,6 @@ GetElemVarValue PROTO :DWORD, :DWORD
 
 HashTableInsert PROTO :DWORD, :BYTE, :WORD, :DWORD
 HashTableSearch PROTO :DWORD, :DWORD
+HashTableDelete PROTO :DWORD
 
 ENDIF

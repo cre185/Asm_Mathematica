@@ -310,5 +310,28 @@ HashTableSearch PROC,
     ret
 HashTableSearch ENDP
 
+;---------------------------------------------------------------------------
+HashTableDelete PROC,
+    inStrAddr: DWORD
+; deletes the elem specified by inStrAddr
+;---------------------------------------------------------------------------
+    LOCAL elemPtr: DWORD
+    pushad
+    INVOKE HashTableSearch, inStrAddr, ADDR elemPtr
+    .IF elemPtr == 0
+        ; not found
+        ; do nothing
+        popad
+        ret
+    .ENDIF
+    ; found
+    mov ecx, 0
+    mov edi, elemPtr
+    .WHILE ecx < 256
+        mov BYTE PTR [edi + ecx], 0
+    .ENDW
+    popad
+    ret
+HashTableDelete ENDP
 
 END

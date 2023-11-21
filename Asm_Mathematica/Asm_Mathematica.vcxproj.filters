@@ -39,6 +39,12 @@
     <MASM Include="boolean.asm">
       <Filter>源文件</Filter>
     </MASM>
+    <MASM Include="numasm.asm">
+      <Filter>源文件</Filter>
+    </MASM>
+    <MASM Include="solve.asm">
+      <Filter>源文件</Filter>
+    </MASM>
   </ItemGroup>
   <ItemGroup>
     <None Include="calculate.inc">
@@ -66,6 +72,12 @@
       <Filter>头文件</Filter>
     </None>
     <None Include="boolean.inc">
+      <Filter>头文件</Filter>
+    </None>
+    <None Include="numasm.inc">
+      <Filter>头文件</Filter>
+    </None>
+    <None Include="solve.inc">
       <Filter>头文件</Filter>
     </None>
   </ItemGroup>
