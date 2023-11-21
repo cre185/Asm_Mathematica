@@ -374,6 +374,11 @@ PolishNotation PROC
 					.ENDIF
 					popad
 				.ENDIF
+				.REPEAT
+					inc j
+					mov ecx, j
+					mov al, BYTE PTR [OperatorList+ecx]
+				.UNTIL al == 32 || al == 0
 				inc j
 				mov ecx, j
 				mov al, BYTE PTR [OperatorList+ecx]
