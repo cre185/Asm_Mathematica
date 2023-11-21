@@ -119,10 +119,11 @@ GetElemVarType PROC,
     INVOKE GetElemVarNameSize, elemPtr, ADDR varNameSize
     mov ebx, elemPtr
     add ebx, 2 ; ebx points at the variable name
+    mov edx, 0
     mov dx, varNameSize
     add ebx, edx ; ebx points at the variable type
     ; read 1 byte from [ebx] to varTypeAddr
-    mov edx, varTypeAddr
+    mov edx, [varTypeAddr]
     mov al, BYTE PTR [ebx]
     mov BYTE PTR [edx], al
     popad
@@ -139,6 +140,7 @@ GetElemVarSize PROC,
     INVOKE GetElemVarNameSize, elemPtr, ADDR varNameSize
     mov ebx, elemPtr
     add ebx, 2 ; ebx points at the variable name
+    mov edx, 0
     mov dx, varNameSize
     add ebx, edx ; ebx points at the variable type
     inc ebx ; ebx points at the variable size
@@ -161,6 +163,7 @@ GetElemVarValue PROC,
     INVOKE GetElemVarSize, elemPtr, ADDR varSize
     mov ebx, elemPtr
     add ebx, 2 ; ebx points at the variable name
+    mov edx, 0
     mov dx, varNameSize
     add ebx, edx ; ebx points at the variable type
     add ebx, 3 ; ebx points at the variable value
@@ -218,7 +221,13 @@ HashTableInsert PROC,
         mov WORD PTR [edi], ax
         add edi, 2
         ; 5. var value
-        INVOKE strcpy, edi, inValueAddr ; put inValueAddr ---> edi
+        mov esi, inValueAddr
+        mov ecx, 0
+        .WHILE cx < inSize
+            mov bl, [esi+ecx]
+            mov [edi+ecx], bl
+            inc cx
+        .ENDW
         ; done
         popad
         ret

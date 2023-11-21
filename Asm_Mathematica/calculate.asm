@@ -491,6 +491,8 @@ CalculateOp PROC,
 	mov long2Addr, eax
 	LEA eax, tmpLong
 	mov tmpLongAddr, eax
+	INVOKE memset, ADDR long1, 0, 128
+	INVOKE memset, ADDR long2, 0, 128
 
 	INVOKE TopType, type1Addr
 	INVOKE TopSize, size1Addr
@@ -542,11 +544,11 @@ CalculateOp PROC,
 	mov eax, [Op]
 	.IF type1 == TYPE_ERROR
 		INVOKE TopPush, long1Addr, size1, type1
-	.ELSEIF type1 == TYPE_VAR
+	.ELSEIF type2 == TYPE_VAR
 		.IF WORD PTR [eax] == 3d3ah
 			; todo: ":=" handling
-			INVOKE HashTableInsert, long1Addr, type2, size2, long2Addr
-			INVOKE TopPush, long2Addr, size2, type2
+			INVOKE HashTableInsert, long2Addr, type1, size1, long1Addr
+			INVOKE TopPush, long1Addr, size1, type1
 		.ENDIF
 	.ELSEIF type2 == TYPE_ERROR
 		INVOKE TopPush, long2Addr, size2, type2
