@@ -4,6 +4,8 @@ option casemap: none
 
 include  		calculate.inc
 include			macro.inc
+include			longInt.inc
+include			double.inc
 strncpy			PROTO C :ptr sbyte, :ptr sbyte, :DWORD
 strcpy			PROTO C :ptr sbyte, :ptr sbyte
 strcat			PROTO C :ptr sbyte, :ptr sbyte
@@ -69,7 +71,7 @@ factorialTable DWORD 1, 1, 2, 6, 24, 120, 720, 5040, 40320, 362880, 3628800, 399
 ;---------------------------------------------------------------------------
 
 ;---------------------------------------------------------------------------
-; TODO: set constants
+SetConstant PROC
 ; e = 2.7182818284590452353602874713527
 ; pi = 3.1415926535897932384626433832795
 ; ln10 = 2.3025850929940456840179914546844
@@ -78,6 +80,10 @@ factorialTable DWORD 1, 1, 2, 6, 24, 120, 720, 5040, 40320, 362880, 3628800, 399
 ; h = 6.62607004e-34 (J*s)
 ; G = 6.67408e-11 (m^3/(kg*s^2))
 ;---------------------------------------------------------------------------
+    LOCAL tmpStr[128]:BYTE
+    pushad
+    popad
+SetConstant ENDP
 
 ;---------------------------------------------------------------------------
 ; TODO: FACT x
