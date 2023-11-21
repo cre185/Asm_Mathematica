@@ -476,7 +476,7 @@ CalculateOp PROC,
 	LOCAL size1Addr:DWORD, size2Addr:DWORD
 	LOCAL operand1[128]:BYTE, operand2[128]:BYTE
 	LOCAL operand1Addr:DWORD, operand2Addr:DWORD
-	LOCAL tmpLong:QWORD, tmpLongAddr:DWORD
+	LOCAL tmpLong:QWORD, tmpLongAddr:DWORD, tmpPtr:DWORD
 	pushad
 	LEA eax, type1
 	mov type1Addr, eax
@@ -499,6 +499,19 @@ CalculateOp PROC,
 	INVOKE TopSize, size1Addr
 	INVOKE TopData, operand1Addr
 	INVOKE TopPop
+	; Replace var by correct value first
+	mov eax, [Op]
+	.IF type1 == TYPE_VAR
+		INVOKE HashTableSearch, operand1Addr, ADDR tmpPtr
+		.IF tmpPtr != 0
+			INVOKE GetElemVarType, tmpPtr, type1Addr
+			INVOKE GetElemVarSize, tmpPtr, size1Addr
+			INVOKE GetElemVarValue, tmpPtr, operand1Addr
+		.ELSE
+			INVOKE TopPushError, ADDR VarUndefinedText
+			jmp endFlag
+		.ENDIF
+	.ENDIF
 	mov eax, [Op]
 	.IF type1 == TYPE_INT
 		.IF DWORD PTR [eax] == 20534241h || DWORD PTR [eax] == 534241h
@@ -535,6 +548,8 @@ CalculateOp PROC,
 		jmp BinaryOp
 	.ELSEIF type1 == TYPE_ERROR
 		INVOKE TopPush, operand1Addr, size1, type1
+	.ELSE 
+		INVOKE TopPushStandardError
 	.ENDIF
 	popad 
 	ret
@@ -544,21 +559,42 @@ CalculateOp PROC,
 	INVOKE TopSize, size2Addr
 	INVOKE TopData, operand2Addr
 	INVOKE TopPop
-	mov eax, [Op]
+	; Replace var by correct value first
+	.IF type1 == TYPE_VAR
+		INVOKE HashTableSearch, operand1Addr, ADDR tmpPtr
+		.IF tmpPtr != 0
+			INVOKE GetElemVarType, tmpPtr, type1Addr
+			INVOKE GetElemVarSize, tmpPtr, size1Addr
+			INVOKE GetElemVarValue, tmpPtr, operand1Addr
+		.ELSE
+			INVOKE TopPushError, ADDR VarUndefinedText
+			jmp endFlag
+		.ENDIF
+	.ELSEIF type2 == TYPE_VAR
+		mov eax, [Op]
+		.IF WORD PTR [eax] == 3d3ah
+			INVOKE HashTableInsert, operand2Addr, type1, size1, operand1Addr
+			INVOKE TopPush, operand1Addr, size1, type1
+			jmp endFlag
+		.ELSE
+			INVOKE HashTableSearch, operand2Addr, ADDR tmpPtr
+			.IF tmpPtr != 0
+				INVOKE GetElemVarType, tmpPtr, type2Addr
+				INVOKE GetElemVarSize, tmpPtr, size2Addr
+				INVOKE GetElemVarValue, tmpPtr, operand2Addr
+			.ELSE
+				INVOKE TopPushError, ADDR VarUndefinedText
+				jmp endFlag
+			.ENDIF
+		.ENDIF
+	.ENDIF
 	.IF type1 == TYPE_ERROR
 		INVOKE TopPush, operand1Addr, size1, type1
 	.ELSEIF type2 == TYPE_ERROR
 		INVOKE TopPush, operand2Addr, size2, type2
-	.ELSEIF type1 == TYPE_VAR
-		INVOKE TopPushError, ADDR VarUndefinedText
-	.ELSEIF type2 == TYPE_VAR
-		.IF WORD PTR [eax] == 3d3ah
-			; todo: ":=" handling
-			INVOKE HashTableInsert, operand2Addr, type1, size1, operand1Addr
-			INVOKE TopPush, operand1Addr, size1, type1
-		.ENDIF
 	.ENDIF
 	; Ops that don't care about types
+	mov eax, [Op]
 	.IF WORD PTR [eax] == 2626h
 		INVOKE ToBool, operand1Addr, size1Addr, type1Addr
 		INVOKE ToBool, operand2Addr, size2Addr, type2Addr
@@ -574,6 +610,7 @@ CalculateOp PROC,
 	.ENDIF
 	.IF type1 == TYPE_DOUBLE || type2 == TYPE_DOUBLE
 		INVOKE ToDouble, operand1Addr, size1Addr, type1Addr
+		mov eax, [Op]
 		.IF BYTE PTR [eax] == 94
 			.IF type1 != TYPE_DOUBLE
 				INVOKE ToLong, operand2Addr, size2Addr, type2Addr
@@ -585,6 +622,7 @@ CalculateOp PROC,
 			jmp endFlag
 		.ENDIF
 		INVOKE ToDouble, operand2Addr, size2Addr, type2Addr
+		mov eax, [Op]
 		.IF BYTE PTR [eax] == 43
 			INVOKE DoubleAdd, operand1Addr, operand2Addr
 			INVOKE TopPush, operand1Addr, 8, TYPE_DOUBLE
@@ -606,6 +644,7 @@ CalculateOp PROC,
 	.ELSEIF type1 == TYPE_INT || type2 == TYPE_INT
 		INVOKE ToLong, operand1Addr, size1Addr, type1Addr
 		INVOKE ToLong, operand2Addr, size2Addr, type2Addr
+		mov eax, [Op]
 		.IF BYTE PTR [eax] == 43
 			INVOKE LongAdd, operand1Addr, operand2Addr
 			INVOKE TopPush, operand1Addr, 8, TYPE_INT
@@ -695,25 +734,8 @@ CalculatePN PROC
 				INVOKE strchr, ADDR tmpArray, cl
 				pop ecx
 				.IF eax != 0 ; all strings containing lowercase letters are interpreted as variable
-					; todo:  variable handling 
-					; we know that for now: tmpArray contains the name of the variable
-					; search in hash table
-					; if found, push the value into stack
-					; ELSE: push an var type into the stack
-					INVOKE HashTableSearch, ADDR tmpArray, ADDR tmpPtr
-					.IF tmpPtr == 0
-						; not found
-						INVOKE strlen, ADDR tmpArray ; get the length of the string into eax
-						INVOKE TopPush, ADDR tmpArray, ax, TYPE_VAR ; push the var into stack
-					.ELSE
-						; found
-						; 1. get the type and size and var
-						INVOKE GetElemVarType, tmpPtr, ADDR tmpType
-						INVOKE GetElemVarSize, tmpPtr, ADDR tmpSize
-						INVOKE GetElemVarValue, tmpPtr, ADDR tmpData
-						; push the var into stack
-						INVOKE TopPush, ADDR tmpData, tmpSize, tmpType
-					.ENDIF
+					INVOKE strlen, ADDR tmpArray ; get the length of the string into eax
+					INVOKE TopPush, ADDR tmpArray, ax, TYPE_VAR ; push the var into stack
 					jmp L4
 				.ENDIF
 				inc ecx
@@ -745,10 +767,6 @@ CalculatePN PROC
 	END_LOOP:
 	INVOKE TopType, ADDR finalType
 	INVOKE TopData, ADDR ansBuffer
-	; the record is stored here
-	mov eax, calculationStackTop
-	mov calculationStackBase, eax
-
 	.IF finalType == TYPE_INT
 		INVOKE LongToStr, ADDR ansBuffer
 	.ELSEIF finalType == TYPE_DOUBLE
@@ -762,9 +780,25 @@ CalculatePN PROC
 		.ELSE
 			INVOKE strcpy, ADDR ansBuffer, ADDR TrueText
 		.ENDIF
+	.ELSEIF finalType == TYPE_VAR
+		INVOKE TopPop
+		INVOKE HashTableSearch, ADDR tmpArray, ADDR tmpPtr
+		.IF tmpPtr == 0
+			INVOKE TopPushError, ADDR VarUndefinedText
+		.ELSE
+			INVOKE GetElemVarType, tmpPtr, ADDR tmpType
+			INVOKE GetElemVarSize, tmpPtr, ADDR tmpSize
+			INVOKE GetElemVarValue, tmpPtr, ADDR tmpData
+			INVOKE TopPush, ADDR tmpData, tmpSize, tmpType
+		.ENDIF
+		jmp END_LOOP
 	.ELSEIF finalType == TYPE_ERROR || finalType == TYPE_VOID
 		; actually nothing is needed. 
 	.ENDIF
+	; Store the record under the stack
+	mov eax, calculationStackTop
+	mov calculationStackBase, eax
+
 	ret
 CalculatePN ENDP
 
