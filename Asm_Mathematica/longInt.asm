@@ -8,9 +8,12 @@ strncpy			PROTO C :ptr sbyte, :ptr sbyte, :DWORD
 strcpy			PROTO C :ptr sbyte, :ptr sbyte
 strcat			PROTO C :ptr sbyte, :ptr sbyte
 memset			PROTO C :ptr sbyte, :DWORD, :DWORD
+sscanf			PROTO C :ptr sbyte, :ptr sbyte, :VARARG
+sprintf         PROTO C :ptr sbyte, :ptr sbyte, :VARARG
 strlen			PROTO C :ptr sbyte
 
 .data
+longStr BYTE "%ld",0
 
 .code
 ;---------------------------------------------------------------------------
@@ -365,53 +368,15 @@ LongToStr PROC,
     longAddr:DWORD
 ; This procedure converts a QWORD into a string.
 ;---------------------------------------------------------------------------
-    LOCAL tmpStr[MaxBufferSize]:BYTE, tmpInt:DWORD, negative: BYTE, tmpLong: QWORD
+    LOCAL tmpLong:QWORD
     pushad
-    mov negative, 0
-    lea esi, tmpStr
-    INVOKE memset, esi, 0, MaxBufferSize
-    mov ebx, [longAddr]
-    ; check if is negative
-    mov eax, [ebx]
-    and eax, 80000000h
-    JZ NON_NEGATIVE
-    ; negative
-    mov negative, 1
-    pushad
-    lea ebx, tmpLong
-    mov DWORD PTR [ebx], 00000000h
-    mov DWORD PTR [ebx + 4], 00000000h
-    INVOKE LongSub, ebx, longAddr
-    INVOKE LongAssign, longAddr, ebx ; now we get -Long
-    popad
-    NON_NEGATIVE:
-    mov eax, [ebx + 4] ; TODO: expand to REAL 64-bit division
-    .WHILE eax > 0
-        lea ebx, tmpLong
-        mov DWORD PTR [ebx], 00000000h
-        mov DWORD PTR [ebx + 4], 0000000ah
-        INVOKE LongDiv, longAddr, ebx, ADDR tmpLong
-        mov ebx, [longAddr]
-        mov eax, [ebx + 4]
-        lea edi, tmpLong
-        mov edx, [edi+4]
-        add dl, '0'
-        push eax
-        INVOKE InsertChar, esi, 0, dl
-        pop eax
-        mov edx, 0
-        inc ecx
-    .ENDW
-    .IF negative == 1
-        ; negative, add a '-'
-        INVOKE InsertChar, esi, 0, '-'
-        inc ecx
-    .ENDIF  
-    push ecx
-    INVOKE memset, longAddr, 0, MaxBufferSize
-    pop ecx
-    INVOKE strncpy, longAddr, esi, ecx
-    popad
+    mov eax, longAddr
+    lea esi, tmpLong
+    mov ebx, [eax+4]
+    mov [esi], ebx
+    mov ebx, [eax]
+    mov [esi+4], ebx
+    INVOKE sprintf, longAddr, ADDR longStr, tmpLong
     ret
 LongToStr ENDP
 

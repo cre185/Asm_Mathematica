@@ -74,10 +74,10 @@
     <None Include="boolean.inc">
       <Filter>头文件</Filter>
     </None>
-    <None Include="numasm.inc">
+    <None Include="solve.inc">
       <Filter>头文件</Filter>
     </None>
-    <None Include="solve.inc">
+    <None Include="numasm.inc">
       <Filter>头文件</Filter>
     </None>
   </ItemGroup>
