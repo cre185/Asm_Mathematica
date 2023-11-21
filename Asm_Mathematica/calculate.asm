@@ -21,17 +21,17 @@ recvBuffer BYTE MaxBufferSize DUP(0)
 ansBuffer BYTE MaxBufferSize DUP(0)
 public recvBuffer, ansBuffer
 
-OperatorTable BYTE "* / ^                          ",0
-			  BYTE "+ -                            ",0
-			  BYTE "ABS NEG IN OUT                 ",0
-			  BYTE "== && ||                       ",0
-			  BYTE ":=                             ",0
+OperatorTable BYTE "* / ^                                                          ",0
+			  BYTE "+ -                                                            ",0
+			  BYTE "ABS NEG IN OUT FACT                                            ",0
+			  BYTE "== && ||                                                       ",0
+			  BYTE ":=                                                             ",0
 ; Type: lower bit 0 for binary, 1 for unary; second bit 0 for operator, 1 for function
-OperatorType  BYTE " 0 0 0                         ",0
-			  BYTE " 0 0                           ",0
-			  BYTE "   3   3  3   3                ",0
-			  BYTE "  0  0  0                      ",0
-			  BYTE "  0                            ",0
+OperatorType  BYTE " 0 0 0                                                         ",0
+			  BYTE " 0 0                                                           ",0
+			  BYTE "   3   3  3   3    3                                           ",0
+			  BYTE "  0  0  0                                                      ",0
+			  BYTE "  0                                                            ",0
 OperatorList BYTE OperatorListLength DUP(0)
 OpTypeList   BYTE OperatorListLength DUP(0)
 
@@ -609,11 +609,10 @@ CalculateOp PROC,
 		INVOKE TopPush, operand1Addr, 1, TYPE_BOOL
 	.ENDIF
 	.IF type1 == TYPE_DOUBLE || type2 == TYPE_DOUBLE
-		INVOKE ToDouble, operand1Addr, size1Addr, type1Addr
 		mov eax, [Op]
 		.IF BYTE PTR [eax] == 94
 			.IF type1 != TYPE_DOUBLE
-				INVOKE ToLong, operand2Addr, size2Addr, type2Addr
+				INVOKE ToLong, operand1Addr, size1Addr, type1Addr
 				INVOKE DoubleExp, operand2Addr, operand1Addr
 				INVOKE TopPush, operand2Addr, 8, TYPE_DOUBLE
 			.ELSE
@@ -621,6 +620,7 @@ CalculateOp PROC,
 			.ENDIF
 			jmp endFlag
 		.ENDIF
+		INVOKE ToDouble, operand1Addr, size1Addr, type1Addr
 		INVOKE ToDouble, operand2Addr, size2Addr, type2Addr
 		mov eax, [Op]
 		.IF BYTE PTR [eax] == 43

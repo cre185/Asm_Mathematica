@@ -17,6 +17,7 @@ include         shell32.inc
 includelib      shell32.lib
 include			rowBox.inc
 include			macro.inc
+include    		numasm.inc
 
 MSGStruct STRUCT
 	msgWnd        DWORD ?
@@ -94,6 +95,9 @@ WinMain PROC
 
 ; init the FPU
 	finit
+
+; init constants
+	INVOKE SetConstant
 
 ; Get a handle to the current process.
 	INVOKE GetModuleHandle, NULL

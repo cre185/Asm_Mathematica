@@ -96,6 +96,7 @@ GetElemVarName PROC,
     mov esi, elemPtr
     add esi, 2 ; esi points at the variable name
     mov edi, varNameAddr
+    mov ecx, 0
     mov cx, varNameSize
     .WHILE ecx > 0
         mov al, BYTE PTR [esi]

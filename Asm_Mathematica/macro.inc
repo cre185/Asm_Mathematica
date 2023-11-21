@@ -7,7 +7,7 @@ RowBoxMax EQU 1024
 MY_CHANGESTATIC EQU 1000h
 
 MaxBufferSize EQU 1024
-OperatorListLength EQU 32
+OperatorListLength EQU 64
 OperatorTableHeight EQU 5
 OperatorTableLength EQU OperatorListLength*OperatorTableHeight
 

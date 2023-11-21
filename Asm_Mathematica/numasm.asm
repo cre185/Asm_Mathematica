@@ -6,6 +6,7 @@ include  		calculate.inc
 include			macro.inc
 include			longInt.inc
 include			double.inc
+include         variables.inc
 strncpy			PROTO C :ptr sbyte, :ptr sbyte, :DWORD
 strcpy			PROTO C :ptr sbyte, :ptr sbyte
 strcat			PROTO C :ptr sbyte, :ptr sbyte
@@ -14,6 +15,18 @@ strlen			PROTO C :ptr sbyte
 
 .data
 factorialTable DWORD 1, 1, 2, 6, 24, 120, 720, 5040, 40320, 362880, 3628800, 39916800, 479001600
+
+eName BYTE "e", 0
+piName BYTE "pi", 0
+ln10Name BYTE "ln10", 0
+ln2Name BYTE "ln2", 0
+c0Name BYTE "c0", 0
+
+eValue BYTE "2.7182818284590452353602874713527", 0
+piValue BYTE "3.1415926535897932384626433832795", 0
+ln10Value BYTE "2.3025850929940456840179914546844", 0
+ln2Value BYTE "0.69314718055994530941723212145818", 0
+c0Value BYTE "299792458", 0
 
 .code
 ;---------------------------------------------------------------------------
@@ -76,18 +89,36 @@ SetConstant PROC
 ; pi = 3.1415926535897932384626433832795
 ; ln10 = 2.3025850929940456840179914546844
 ; ln2 = 0.69314718055994530941723212145818
-; c0 = 299792458 (km/s)
+; c0 = 299792458 (m/s)
 ; h = 6.62607004e-34 (J*s)
 ; G = 6.67408e-11 (m^3/(kg*s^2))
 ;---------------------------------------------------------------------------
-    LOCAL tmpStr[128]:BYTE
+    LOCAL constantValue:QWORD
     pushad
+    ; 1. e=2.7182818284590452353602874713527
+    INVOKE StrToDouble, ADDR eValue, ADDR constantValue
+    INVOKE HashTableInsert, ADDR eName, TYPE_DOUBLE, 8, ADDR constantValue
+    ; 2. pi=3.1415926535897932384626433832795
+    INVOKE StrToDouble, ADDR piValue, ADDR constantValue
+    INVOKE HashTableInsert, ADDR piName, TYPE_DOUBLE, 8, ADDR constantValue
+    ; 3. ln10=2.3025850929940456840179914546844
+    INVOKE StrToDouble, ADDR ln10Value, ADDR constantValue
+    INVOKE HashTableInsert, ADDR ln10Name, TYPE_DOUBLE, 8, ADDR constantValue
+    ; 4. ln2=0.69314718055994530941723212145818
+    INVOKE StrToDouble, ADDR ln2Value, ADDR constantValue
+    INVOKE HashTableInsert, ADDR ln2Name, TYPE_DOUBLE, 8, ADDR constantValue
+    ; 5. c0=299792458 (m/s)
+    INVOKE StrToLong, ADDR c0Value, ADDR constantValue
+    INVOKE HashTableInsert, ADDR c0Name, TYPE_INT, 8, ADDR constantValue
+    
     popad
+    ret
 SetConstant ENDP
 
 ;---------------------------------------------------------------------------
-; TODO: FACT x
-; the factorial of x
+FACT PROC,
+    x: DWORD, ansAddr:DWORD
+; the factorial of x(being a non-negative integer), puts ans into ansAddr
 ; method:
 ; we have factorialTable, (0! to 12!), to accelerate the calculation
 ; 12! can be stored in eax, which is convenient.
@@ -95,6 +126,25 @@ SetConstant ENDP
 ; plus, higher 32 bits might count when x>12, so be careful.
 ; WARNING: FACT x grows very fast, so overflow is highly possible
 ;---------------------------------------------------------------------------
+    LOCAL tmpLong: QWORD
+    pushad
+    .IF x <= 12
+        lea ebx, factorialTable
+        mov eax, x
+        shl eax, 2 ; x *= 4
+        add ebx, eax
+        mov edi, ansAddr
+        add edi, 4
+        mov edx, [ebx] ; [ebx] = factorialTable[x]
+        mov [edi], edx
+        popad
+        ret
+    .ENDIF
+    ; x > 12
+    
+    popad
+    ret
+FACT ENDP
 
 ;---------------------------------------------------------------------------
 ; TODO: SQRT x
