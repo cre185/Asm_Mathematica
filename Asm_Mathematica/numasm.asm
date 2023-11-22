@@ -36,7 +36,7 @@ maximumTolerableErr REAL8 0.000001
 ; and the definition of several constants
 ; and some other useful features
 ;---------------------------------------------------------------------------
-; foundamental functions:
+; fundamental functions:
 ; 1. Series: calculate the sum of a series, according to the given coefficient at the given x
 ; 2. derivative: calculate the derivative of a function at the given x
 ;---------------------------------------------------------------------------

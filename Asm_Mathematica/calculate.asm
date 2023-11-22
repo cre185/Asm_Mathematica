@@ -22,16 +22,18 @@ recvBuffer BYTE MaxBufferSize DUP(0)
 ansBuffer BYTE MaxBufferSize DUP(0)
 public recvBuffer, ansBuffer
 
-OperatorTable BYTE "* / ^ %                                                        ",0
+OperatorTable BYTE "FACT SQRT SIN COS TAN LN LG LOG EXP                            ",0
+			  BYTE "* / ^ % POW                                                    ",0
 			  BYTE "+ -                                                            ",0
-			  BYTE "ABS NEG IN OUT FACT                                            ",0
+			  BYTE "ABS NEG IN OUT                                                 ",0
 			  BYTE "== !=                                                          ",0
 			  BYTE "&& ||                                                          ",0
 			  BYTE ":=                                                             ",0
 ; Type: lower bit 0 for binary, 1 for unary; second bit 0 for operator, 1 for function
-OperatorType  BYTE " 0 0 0 0                                                       ",0
+OperatorType  BYTE "    3    3   3   3   3  3  3   3   3                           ",0
+			  BYTE " 0 0 0 0   2                                                   ",0
 			  BYTE " 0 0                                                           ",0
-			  BYTE "   3   3  3   3    3                                           ",0
+			  BYTE "   3   3  3   3                                                ",0
 			  BYTE "  0  0                                                         ",0
 			  BYTE "  0  0                                                         ",0
 			  BYTE "  0                                                            ",0
@@ -515,15 +517,35 @@ CalculateOp PROC,
 			jmp endFlag
 		.ENDIF
 	.ENDIF
+	; Ops that can calculate using all types
+	mov eax, [Op]
+	.IF DWORD PTR [eax] == 54525153h ; SQRT
+		; todo
+	.ELSEIF DWORD PTR [eax] == 4e4953h || DWORD PTR [eax] == 204e4953h ; SIN
+		; todo
+	.ELSEIF DWORD PTR [eax] == 534f43h || DWORD PTR [eax] == 20534f43h ; COS
+		; todo
+	.ELSEIF DWORD PTR [eax] == 4e4154h || DWORD PTR [eax] == 204e4154h ; TAN
+		; todo
+	.ELSEIF WORD PTR [eax] == 4e4ch ; LN
+		; todo
+	.ELSEIF WORD PTR [eax] == 474ch ; LG
+		; todo
+	.ELSEIF DWORD PTR [eax] == 474f4ch || DWORD PTR [eax] == 20474f4ch ; LOG
+		; todo
+	.ELSEIF DWORD PTR [eax] == 505845h || DWORD PTR [eax] == 20505845h ; EXP
+		; todo
+	.ENDIF
+	; These ops cares!
 	mov eax, [Op]
 	.IF type1 == TYPE_INT
-		.IF DWORD PTR [eax] == 20534241h || DWORD PTR [eax] == 534241h
+		.IF DWORD PTR [eax] == 20534241h || DWORD PTR [eax] == 534241h ; ABS
 			INVOKE LongAbs, operand1Addr
 			INVOKE TopPush, operand1Addr, 8, TYPE_INT
-		.ELSEIF DWORD PTR [eax] == 2047454eh || DWORD PTR [eax] == 47454eh
+		.ELSEIF DWORD PTR [eax] == 2047454eh || DWORD PTR [eax] == 47454eh ; NEG
 			INVOKE LongNeg, operand1Addr
 			INVOKE TopPush, operand1Addr, 8, TYPE_INT
-		.ELSEIF WORD PTR [eax] == 4e49h || DWORD PTR [eax] == 54554fh || DWORD PTR [eax] == 2054554fh
+		.ELSEIF WORD PTR [eax] == 4e49h || DWORD PTR [eax] == 54554fh || DWORD PTR [eax] == 2054554fh ; IN/OUT
 			mov edx, CalCount
 			mov eax, operand1Addr
 			sub edx, DWORD PTR [eax+4]
@@ -532,7 +554,7 @@ CalculateOp PROC,
 			.ELSE 
 				INVOKE GetHistory, edx
 			.ENDIF
-		.ELSEIF DWORD PTR [eax] == 54434146h
+		.ELSEIF DWORD PTR [eax] == 54434146h ; FACT
 			mov edx, operand1Addr
 			add edx, 4
 			mov ebx, [edx]
@@ -542,13 +564,13 @@ CalculateOp PROC,
 			jmp BinaryOp
 		.ENDIF
 	.ELSEIF type1 == TYPE_DOUBLE
-		.IF DWORD PTR [eax] == 20534241h || DWORD PTR [eax] == 534241h
+		.IF DWORD PTR [eax] == 20534241h || DWORD PTR [eax] == 534241h ; ABS
 			INVOKE DoubleAbs, operand1Addr
 			INVOKE TopPush, operand1Addr, 8, TYPE_DOUBLE
-		.ELSEIF DWORD PTR [eax] == 2047454eh || DWORD PTR [eax] == 47454eh
+		.ELSEIF DWORD PTR [eax] == 2047454eh || DWORD PTR [eax] == 47454eh ; NEG
 			INVOKE DoubleNeg, operand1Addr
 			INVOKE TopPush, operand1Addr, 8, TYPE_DOUBLE
-		.ELSEIF WORD PTR [eax] == 4e49h || DWORD PTR [eax] == 54554fh || DWORD PTR [eax] == 2054554fh
+		.ELSEIF WORD PTR [eax] == 4e49h || DWORD PTR [eax] == 54554fh || DWORD PTR [eax] == 2054554fh ; IN/OUT
 			INVOKE TopPushError, ADDR InOutError
 		.ELSE
 			jmp BinaryOp
@@ -581,7 +603,7 @@ CalculateOp PROC,
 		.ENDIF
 	.ELSEIF type2 == TYPE_VAR
 		mov eax, [Op]
-		.IF WORD PTR [eax] == 3d3ah
+		.IF WORD PTR [eax] == 3d3ah ; :=
 			INVOKE HashTableInsert, operand2Addr, type1, size1, operand1Addr
 			INVOKE TopPush, operand1Addr, size1, type1
 			jmp endFlag
@@ -602,24 +624,27 @@ CalculateOp PROC,
 	.ELSEIF type2 == TYPE_ERROR
 		INVOKE TopPush, operand2Addr, size2, type2
 	.ENDIF
-	; Ops that don't care about types
+	; Ops that can calculate using all types
 	mov eax, [Op]
-	.IF WORD PTR [eax] == 2626h
+	.IF WORD PTR [eax] == 2626h ; &&
 		INVOKE ToBool, operand1Addr, size1Addr, type1Addr
 		INVOKE ToBool, operand2Addr, size2Addr, type2Addr
 		INVOKE BoolAnd, operand1, operand2
 		mov operand1, al
 		INVOKE TopPush, operand1Addr, 1, TYPE_BOOL
-	.ELSEIF WORD PTR [eax] == 7c7ch
+	.ELSEIF WORD PTR [eax] == 7c7ch ; ||
 		INVOKE ToBool, operand1Addr, size1Addr, type1Addr
 		INVOKE ToBool, operand2Addr, size2Addr, type2Addr
 		INVOKE BoolOr, operand1, operand2
 		mov operand1, al
 		INVOKE TopPush, operand1Addr, 1, TYPE_BOOL
+	.ELSEIF DWORD PTR [eax] == 574f50h || DWORD PTR [eax] == 20574f50h ; POW
+		; todo
 	.ENDIF
+	; These ops cares!
 	.IF type1 == TYPE_DOUBLE || type2 == TYPE_DOUBLE
 		mov eax, [Op]
-		.IF BYTE PTR [eax] == 94
+		.IF BYTE PTR [eax] == 94 ; ^
 			.IF type1 != TYPE_DOUBLE
 				INVOKE ToLong, operand1Addr, size1Addr, type1Addr
 				INVOKE DoubleExp, operand2Addr, operand1Addr
@@ -632,22 +657,22 @@ CalculateOp PROC,
 		INVOKE ToDouble, operand1Addr, size1Addr, type1Addr
 		INVOKE ToDouble, operand2Addr, size2Addr, type2Addr
 		mov eax, [Op]
-		.IF BYTE PTR [eax] == 43
+		.IF BYTE PTR [eax] == 43 ; +
 			INVOKE DoubleAdd, operand1Addr, operand2Addr
 			INVOKE TopPush, operand1Addr, 8, TYPE_DOUBLE
-		.ELSEIF BYTE PTR [eax] == 42
+		.ELSEIF BYTE PTR [eax] == 42 ; *
 			INVOKE DoubleMul, operand1Addr, operand2Addr
 			INVOKE TopPush, operand1Addr, 8, TYPE_DOUBLE
-		.ELSEIF BYTE PTR [eax] == 45
+		.ELSEIF BYTE PTR [eax] == 45 ; -
 			INVOKE DoubleSub, operand2Addr, operand1Addr
 			INVOKE TopPush, operand2Addr, 8, TYPE_DOUBLE
-		.ELSEIF BYTE PTR [eax] == 47
+		.ELSEIF BYTE PTR [eax] == 47 ; /
 			INVOKE DoubleDiv, operand2Addr, operand1Addr
 			INVOKE TopPush, operand2Addr, 8, TYPE_DOUBLE
-		.ELSEIF WORD PTR [eax] == 3d3dh
+		.ELSEIF WORD PTR [eax] == 3d3dh ; ==
 			INVOKE DoubleEqu, operand1Addr, operand2Addr
 			INVOKE TopPush, operand1Addr, 1, TYPE_BOOL
-		.ELSEIF WORD PTR [eax] == 3d21h
+		.ELSEIF WORD PTR [eax] == 3d21h ; !=
 			INVOKE DoubleEqu, operand1Addr, operand2Addr
 			INVOKE BoolNot, operand1
 			mov operand1, al
@@ -659,30 +684,30 @@ CalculateOp PROC,
 		INVOKE ToLong, operand1Addr, size1Addr, type1Addr
 		INVOKE ToLong, operand2Addr, size2Addr, type2Addr
 		mov eax, [Op]
-		.IF BYTE PTR [eax] == 43
+		.IF BYTE PTR [eax] == 43 ; +
 			INVOKE LongAdd, operand1Addr, operand2Addr
 			INVOKE TopPush, operand1Addr, 8, TYPE_INT
-		.ELSEIF BYTE PTR [eax] == 42
+		.ELSEIF BYTE PTR [eax] == 42 ; *
 			INVOKE LongMul, operand1Addr, operand2Addr
 			INVOKE TopPush, operand1Addr, 8, TYPE_INT
-		.ELSEIF BYTE PTR [eax] == 45
+		.ELSEIF BYTE PTR [eax] == 45 ; -
 			INVOKE LongSub, operand2Addr, operand1Addr
 			INVOKE TopPush, operand2Addr, 8, TYPE_INT
-		.ELSEIF BYTE PTR [eax] == 47
+		.ELSEIF BYTE PTR [eax] == 47 ; /
 			INVOKE LongToDouble, operand1Addr
 			INVOKE LongToDouble, operand2Addr
 			INVOKE DoubleDiv, operand2Addr, operand1Addr
 			INVOKE TopPush, operand2Addr, 8, TYPE_DOUBLE
-		.ELSEIF BYTE PTR [eax] == 37
+		.ELSEIF BYTE PTR [eax] == 37 ; &
 			INVOKE LongDiv, operand2Addr, operand1Addr
 			INVOKE TopPush, operand1Addr, 8, TYPE_INT
-		.ELSEIF BYTE PTR [eax] == 94
+		.ELSEIF BYTE PTR [eax] == 94 ; ^
 			INVOKE LongExp, operand2Addr, operand1Addr
 			INVOKE TopPush, operand2Addr, 8, TYPE_INT
-		.ELSEIF WORD PTR [eax] == 3d3dh
+		.ELSEIF WORD PTR [eax] == 3d3dh ; ==
 			INVOKE LongEqu, operand1Addr, operand2Addr
 			INVOKE TopPush, operand1Addr, 1, TYPE_BOOL
-		.ELSEIF WORD PTR [eax] == 3d21h
+		.ELSEIF WORD PTR [eax] == 3d21h ; !=
 			INVOKE LongEqu, operand1Addr, operand2Addr
 			INVOKE BoolNot, operand1
 			mov operand1, al
