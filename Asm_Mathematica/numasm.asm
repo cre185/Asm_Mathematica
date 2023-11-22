@@ -30,6 +30,8 @@ c0Value BYTE "299792458", 0
 
 maximumTolerableErr REAL8 0.000001
 
+pi REAL8 3.141592653589
+
 .code
 ;---------------------------------------------------------------------------
 ; In this section we aim to support the calulation of some mathematic funcs
@@ -37,8 +39,7 @@ maximumTolerableErr REAL8 0.000001
 ; and some other useful features
 ;---------------------------------------------------------------------------
 ; fundamental functions:
-; 1. Series: calculate the sum of a series, according to the given coefficient at the given x
-; 2. derivative: calculate the derivative of a function at the given x
+; 1. derivative: calculate the derivative of a function at the given x
 ;---------------------------------------------------------------------------
 ; constants:
 ; 1. e: Euler's number
@@ -60,25 +61,6 @@ maximumTolerableErr REAL8 0.000001
 ; 8. LOG x ===>     the logarithm of x to base 2
 ; 9. EXP x ===>     the exponential function e^x
 ; 10. POW x y ===>     x^y
-;---------------------------------------------------------------------------
-
-;---------------------------------------------------------------------------
-; TODO: Series x, n, coefficientArrayAddr
-; param explanation:
-; x: where the series is expanded
-; n: the highest power of the series
-; coefficientArrayAddr: this ptr provides an array of n+1 coefficients
-;
-; method:
-; we use the Horner's method to calculate the sum of the series
-; 1. let b_{n} = a_{n}
-; 2. recursively: b_{n-1} = a_{n-1} + x*b_{n}
-; 3. stop when b_{0} is calculated
-;
-; PROOF:
-; apparently, the sum of the series is:
-; f(x) = a_{0} + a_{1}x + a_{2}x^2 + ... + a_{n}x^n
-; f(x) = a_{0} + x(a_{1} + x(a_{2} + ... + x(a_{n-1} + x*a_{n})...))
 ;---------------------------------------------------------------------------
 
 ;---------------------------------------------------------------------------
@@ -216,21 +198,100 @@ Sqrt PROC,
 Sqrt ENDP
 
 ;---------------------------------------------------------------------------
-; TODO: SIN x
+Sin PROC,
+    x: QWORD, ansAddr:DWORD
 ; the sine of x
 ; method:
-; 1. first, calculate x / (2*pi), get the remainder dx
-; 2. use sin(dx) = dx - dx^3/3! + dx^5/5! - dx^7/7! + ... to calculate sin(dx)
-; 3. stop calculating the series when the absolute value of the term is less than 1e-6
+; 1. first, calculate x / (2*pi), get the remainder deltax
+; 2. use sin(deltax) = deltax - deltax^3/3! + deltax^5/5! - deltax^7/7! + deltax^9/9! - deltax^11/11! + o(deltax^13)
+; 3. we stop at deltax^11/11! since deltax^13/13! is too small to be significant
 ;---------------------------------------------------------------------------
+    LOCAL sum:QWORD, deltax: QWORD, deltaxPower: QWORD, factVal: QWORD, tmp: QWORD, i:QWORD
+    pushad
+    fldz
+    fstp sum           ; sum = 0
+    fld x              ; stack:  BOTTOM: x                         :TOP
+    fld pi             ; stack:  BOTTOM: x, pi                     :TOP
+    fld1
+    fld1               ; stack:  BOTTOM: x, pi, 1, 1               :TOP
+    fadd               ; stack:  BOTTOM: x, pi, 2                  :TOP
+    fmul               ; stack:  BOTTOM: x, 2*pi                   :TOP
+    fdiv               ; stack:  BOTTOM: x/(2*pi)                  :TOP
+    frndint            ; stack:  BOTTOM: floor(x/(2*pi))           :TOP
+    fstp tmp           ; tmp = floor(x/(2*pi))
+    fld pi             ; stack:  BOTTOM: pi                        :TOP
+    fld1               ; stack:  BOTTOM: pi, 1                     :TOP
+    fld1               ; stack:  BOTTOM: pi, 1, 1                  :TOP
+    fadd               ; stack:  BOTTOM: pi, 2                     :TOP
+    fmul               ; stack:  BOTTOM: 2*pi                      :TOP
+    fld tmp            ; stack:  BOTTOM: 2*pi, floor(x/(2*pi))     :TOP
+    fmul               ; stack:  BOTTOM: 2*pi*floor(x/(2*pi))      :TOP
+    fld x              ; stack:  BOTTOM: 2*pi*floor(x/(2*pi)), x   :TOP
+    fsub               ; stack:  BOTTOM: x - 2*pi*floor(x/(2*pi))  :TOP
+    fstp deltax            ; deltax = x - 2*pi*floor(x/(2*pi))
+    fld deltax
+    fstp deltaxPower       ; deltaxPower = deltax
+    fld1
+    fstp factVal       ; factVal = 1 = 1!
+    fld1
+    fstp i             ; i = 1
+    mov ecx, 1         ; ecx = 1
+    Repeatedly:
+        fld sum        ; stack:  BOTTOM: sum                                :TOP
+        fld deltaxPower    ; stack:  BOTTOM: sum, deltaxPower               :TOP
+        fld factVal    ; stack:  BOTTOM: sum, deltaxPower, factVal          :TOP
+        fdiv           ; stack:  BOTTOM: sum, deltaxPower/factVal           :TOP
+        fadd           ; stack:  BOTTOM: sum + deltaxPower/factVal          :TOP
+        fstp sum       ; sum = sum + deltaxPower/factVal
+        ; refresh deltaxPower, factVal, i
+        ; 1. deltaxPower = deltaxPower * deltax^2
+        fld deltaxPower    ; stack:  BOTTOM: deltaxPower                    :TOP
+        fld deltax         ; stack:  BOTTOM: deltaxPower, deltax            :TOP
+        fld deltax         ; stack:  BOTTOM: deltaxPower, deltax, deltax    :TOP
+        fmul           ; stack:  BOTTOM: deltaxPower, deltax^2              :TOP
+        fmul           ; stack:  BOTTOM: deltaxPower * deltax^2             :TOP
+        fstp deltaxPower   ; deltaxPower = deltaxPower * deltax^2
+        ; 2. factVal = (-) * factVal * (i+1) * (i+2)
+        fld factVal    ; stack:  BOTTOM: factVal                            :TOP
+        fchs           ; stack:  BOTTOM: -factVal                           :TOP
+        fld i          ; stack:  BOTTOM: -factVal, i                        :TOP
+        fld1           ; stack:  BOTTOM: -factVal, i, 1                     :TOP
+        fadd           ; stack:  BOTTOM: -factVal, i+1                      :TOP
+        fld i          ; stack:  BOTTOM: -factVal, i+1, i                   :TOP
+        fld1           ; stack:  BOTTOM: -factVal, i+1, i, 1                :TOP
+        fld1           ; stack:  BOTTOM: -factVal, i+1, i, 1, 1             :TOP
+        fadd           ; stack:  BOTTOM: -factVal, i+1, i, 2                :TOP
+        fadd           ; stack:  BOTTOM: -factVal, i+1, i+2                 :TOP
+        fmul           ; stack:  BOTTOM: -factVal, (i+1)*(i+2)              :TOP
+        fmul           ; stack:  BOTTOM: (-) * factVal * (i+1)*(i+2)        :TOP
+        fstp factVal   ; factVal = (-) * factVal * (i+1)*(i+2)
+        ; 3. i = i + 2
+        fld i          ; stack:  BOTTOM: i                                 :TOP
+        fld1           ; stack:  BOTTOM: i, 1                              :TOP
+        fld1           ; stack:  BOTTOM: i, 1, 1                           :TOP
+        fadd           ; stack:  BOTTOM: i, 2                              :TOP
+        fadd           ; stack:  BOTTOM: i + 2                             :TOP
+        fstp i         ; i = i + 2
+        add ecx, 2
+        .IF ecx <= 11
+            ; x^i (i <= 11)
+            jmp Repeatedly
+        .ENDIF
+    ; ends
+    ; put sum into ansAddr
+    mov ebx, ansAddr
+    fld sum
+    fstp QWORD PTR [ebx]
+    popad
+Sin ENDP
 
 ;---------------------------------------------------------------------------
 ; TODO: COS x
 ; the cosine of x
 ; method:
 ; 1. first, calculate x / (2*pi), get the remainder dx
-; 2. use cos(dx) = 1 - dx^2/2! + dx^4/4! - dx^6/6! + ... to calculate cos(dx)
-; 3. stop calculating the series when the absolute value of the term is less than 1e-6
+; 2. use cos(dx) = 1 - dx^2/2! + dx^4/4! - dx^6/6! + dx^8/8! - dx^10/10! + dx^12/12! + o(dx^14)
+; 3. we stop at dx^12/12! since dx^14/14! is too small to be significant
 ;---------------------------------------------------------------------------
 
 ;---------------------------------------------------------------------------
