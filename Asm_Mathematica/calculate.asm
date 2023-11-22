@@ -354,6 +354,15 @@ PolishNotation PROC
 			.WHILE al != 0
 				.IF bl == al && al != 32
 					pushad
+					mov ecx, i
+					dec ecx 
+					.IF ecx < 80000000h
+						INVOKE IsOperator, ADDR recvBuffer, ecx
+						.IF eax >= 2; the op is another op's suffix and has been treated
+							jmp restart
+						.ENDIF
+					.ENDIF
+					
 					mov k, 1
 					mov ecx, j
 					inc ecx
@@ -419,6 +428,16 @@ PolishNotation PROC
 		INVOKE IsOperator, ADDR recvBuffer, ecx
 		.IF eax != 0
 			pushad ; ecx -> 'Op'...)
+			pushad
+			dec ecx
+			.IF ecx < 80000000h
+				INVOKE IsOperator, ADDR recvBuffer, ecx
+				.IF eax >= 2; the op is another op's suffix and has been treated
+					popad
+					jmp removeStart
+				.ENDIF
+			.ENDIF
+			popad
 			mov esi, ecx
 			mov ebx, 1
 			.WHILE ebx > 0
@@ -459,6 +478,7 @@ PolishNotation PROC
 				INVOKE InsertChar, ADDR recvBuffer, ecx, 32
 			.ENDIF
 		.ENDIF
+		removeStart:
 	.UNTIL ecx == 0
 	mov ecx, 0
 	mov al, BYTE PTR [recvBuffer]
@@ -782,7 +802,6 @@ CalculatePN PROC
 		INVOKE IsOperator, ADDR ansBuffer, ansBufferStartingLoc
 		; if eax == 0, then it is an operand
 		.IF eax == 0
-			; TODO: support more types
 			; put the [ansBufferStartingLoc, ansBufferLoc) into tmpArray
 			mov esi, offset ansBuffer
 			add esi, ansBufferStartingLoc
@@ -827,8 +846,8 @@ CalculatePN PROC
 		L4:
 		mov ecx, ansBufferLen
 		add ansBufferStartingLoc, ecx
-		INC ansBufferStartingLoc
-		JMP L1
+		inc ansBufferStartingLoc
+		jmp L1
 	END_LOOP:
 	INVOKE TopType, ADDR finalType
 	INVOKE TopData, ADDR ansBuffer
