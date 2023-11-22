@@ -28,6 +28,8 @@ ln10Value BYTE "2.3025850929940456840179914546844", 0
 ln2Value BYTE "0.69314718055994530941723212145818", 0
 c0Value BYTE "299792458", 0
 
+maximumTolerableErr REAL8 1e-6
+
 .code
 ;---------------------------------------------------------------------------
 ; In this section we aim to support the calulation of some mathematic funcs
@@ -118,7 +120,7 @@ SetConstant ENDP
 ;---------------------------------------------------------------------------
 Fact PROC,
     x: DWORD, ansAddr:DWORD
-; the factorial of x(being a non-negative integer), puts ans into ansAddr
+; the factorial of x(being a non-negative 32-bit integer), puts ans into ansAddr
 ; method:
 ; we have factorialTable, (0! to 12!), to accelerate the calculation
 ; 12! can be stored in eax, which is convenient.
@@ -154,7 +156,8 @@ Fact PROC,
 Fact ENDP
 
 ;---------------------------------------------------------------------------
-; TODO: SQRT x
+Sqrt PROC,
+    x: QWORD, ansAddr:DWORD
 ; the square root of x
 ; method:
 ; we use the Newton's method to calculate the square root of x recursively
@@ -170,6 +173,45 @@ Fact ENDP
 ; l_n(t_{n+1}) = 0 <==> t_{n+1} = (t_{n} + x/t_{n})/2
 ; t_{n} shall --> \sqrt{x}
 ;---------------------------------------------------------------------------
+    LOCAL t: QWORD, tNext: QWORD
+    pushad
+    fld x
+    fstp t ; t_{0} = x
+    Recursively:
+        fld x   ; stack:  BOTTOM: x                 :TOP
+        fld t   ; stack:  BOTTOM: x, t              :TOP
+        fdiv    ; stack:  BOTTOM: x/t               :TOP 
+        fld t   ; stack:  BOTTOM: x/t, t            :TOP
+        fadd    ; stack:  BOTTOM: x/t + t           :TOP
+        fld1    ; stack:  BOTTOM: x/t + t, 1        :TOP
+        fld1    ; stack:  BOTTOM: x/t + t, 1, 1     :TOP
+        fadd    ; stack:  BOTTOM: x/t + t, 2        :TOP
+        fdiv    ; stack:  BOTTOM: (x/t + t)/2       :TOP
+        fstp tNext ; t_{n+1} = (t_{n} + x/t_{n})/2
+        fld t   ; stack:  BOTTOM: t_{n}             :TOP
+        fld tNext ; stack:  BOTTOM: t_{n}, t_{n+1}  :TOP
+        fsub    ; stack:  BOTTOM: t_{n+1} - t_{n}   :TOP
+        fabs    ; stack:  BOTTOM: |t_{n+1} - t_{n}| :TOP
+        fld maximumTolerableErr ; stack:  BOTTOM: |t_{n+1} - t_{n}|, 1e-6 :TOP
+        fcomp st(1), st(0) ; st(1) = |t_{n+1} - t_{n}|, st(0) = 1e-6
+        .IF CARRY? == 0
+            ; || > 1e-6
+            ; recursively calculate
+            fld tNext
+            fstp t
+            jmp Recursively
+        .ELSE
+            ; || < 1e-6
+            ; stop
+            fld tNext
+            mov edx, ansAddr
+            fstp REAL8 PTR [edx]
+            popad
+            ret
+        .ENDIF
+    popad
+    ret
+Sqrt ENDP
 
 ;---------------------------------------------------------------------------
 ; TODO: SIN x
