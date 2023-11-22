@@ -199,7 +199,7 @@ Sin PROC,
 ; the sine of x
 ; method:
 ; 1. first, calculate x / (2*pi), get the remainder deltax
-; 2. use sin(deltax) = deltax - deltax^3/3! + deltax^5/5! - deltax^7/7! + deltax^9/9! - deltax^11/11! + o(deltax^13)
+; 2. use sin(deltax) = deltax - deltax^3/3! + deltax^5/5! - deltax^7/7! + deltax^9/9! -...- deltax^21/21! + o(deltax^23)
 ; 3. we stop at deltax^11/11! since deltax^13/13! is too small to be significant
 ;---------------------------------------------------------------------------
     LOCAL sum:QWORD, deltax: QWORD, deltaxPower: QWORD, factVal: QWORD, tmp: QWORD, i:QWORD
@@ -269,8 +269,8 @@ Sin PROC,
         fadd           ; stack:  BOTTOM: i + 2                             :TOP
         fstp i         ; i = i + 2
         add ecx, 2
-        .IF ecx <= 11
-            ; x^i (i <= 11)
+        .IF ecx <= 21
+            ; x^i (i <= 21)
             jmp Repeatedly
         .ENDIF
     ; ends
@@ -279,16 +279,99 @@ Sin PROC,
     fld sum
     fstp QWORD PTR [ebx]
     popad
+    ret
 Sin ENDP
 
 ;---------------------------------------------------------------------------
-; TODO: COS x
+Cos PROC,
+    x: QWORD, ansAddr:DWORD
 ; the cosine of x
 ; method:
-; 1. first, calculate x / (2*pi), get the remainder dx
-; 2. use cos(dx) = 1 - dx^2/2! + dx^4/4! - dx^6/6! + dx^8/8! - dx^10/10! + dx^12/12! + o(dx^14)
-; 3. we stop at dx^12/12! since dx^14/14! is too small to be significant
+; 1. first, calculate x / (2*pi), get the remainder deltax
+; 2. use cos(deltax) = 1 - deltax^2/2! + deltax^4/4! - deltax^6/6! + deltax^8/8! - deltax^10/10! +...+ deltax^20/20! + o(deltax^22)
+; 3. we stop at deltax^12/12! since deltax^14/14! is too small to be significant
 ;---------------------------------------------------------------------------
+    LOCAL sum:QWORD, deltax: QWORD, deltaxPower: QWORD, factVal: QWORD, tmp: QWORD, i:QWORD
+    pushad
+    fldz
+    fstp sum           ; sum = 0
+    fld x              ; stack:  BOTTOM: x                         :TOP
+    fld pi             ; stack:  BOTTOM: x, pi                     :TOP
+    fld1               ; stack:  BOTTOM: x, pi, 1                  :TOP
+    fld1               ; stack:  BOTTOM: x, pi, 1, 1               :TOP
+    fadd               ; stack:  BOTTOM: x, pi, 2                  :TOP
+    fmul               ; stack:  BOTTOM: x, 2*pi                   :TOP
+    fdiv               ; stack:  BOTTOM: x/(2*pi)                  :TOP
+    frndint            ; stack:  BOTTOM: floor(x/(2*pi))           :TOP
+    fstp tmp           ; tmp = floor(x/(2*pi))
+    fld pi             ; stack:  BOTTOM: pi                        :TOP
+    fld1               ; stack:  BOTTOM: pi, 1                     :TOP
+    fld1               ; stack:  BOTTOM: pi, 1, 1                  :TOP
+    fadd               ; stack:  BOTTOM: pi, 2                     :TOP
+    fmul               ; stack:  BOTTOM: 2*pi                      :TOP
+    fld tmp            ; stack:  BOTTOM: 2*pi, floor(x/(2*pi))     :TOP
+    fmul               ; stack:  BOTTOM: 2*pi*floor(x)/(2*pi)      :TOP
+    fld x              ; stack:  BOTTOM: 2*pi*floor(x)/(2*pi), x   :TOP
+    fsub               ; stack:  BOTTOM: x - 2*pi*floor(x)/(2*pi)  :TOP
+    fstp deltax        ; deltax = x - 2*pi*floor(x)/(2*pi)
+    fld1
+    fstp deltaxPower   ; deltaxPower = 1 = deltax^0
+    fld1
+    fstp factVal       ; factVal = 1 = 0!
+    fldz
+    fstp i             ; i = 0
+    mov ecx, 0         ; ecx = 0
+    Repeatedly:
+        fld sum        ; stack:  BOTTOM: sum                                :TOP
+        fld deltaxPower; stack:  BOTTOM: sum, deltaxPower                   :TOP
+        fld factVal    ; stack:  BOTTOM: sum, deltaxPower, factVal          :TOP
+        fdiv           ; stack:  BOTTOM: sum, deltaxPower/factVal           :TOP
+        fadd           ; stack:  BOTTOM: sum + deltaxPower/factVal          :TOP
+        fstp sum       ; sum = sum + deltaxPower/factVal
+        ; refresh deltaxPower, factVal, i
+        ; 1. deltaxPower = deltaxPower * deltax^2
+        fld deltaxPower; stack:  BOTTOM: deltaxPower                        :TOP
+        fld deltax     ; stack:  BOTTOM: deltaxPower, deltax                :TOP
+        fld deltax     ; stack:  BOTTOM: deltaxPower, deltax, deltax        :TOP
+        fmul           ; stack:  BOTTOM: deltaxPower, deltax^2              :TOP
+        fmul           ; stack:  BOTTOM: deltaxPower * deltax^2             :TOP
+        fstp deltaxPower   ; deltaxPower = deltaxPower * deltax^2
+        ; 2. factVal = (-) * factVal * (i+1) * (i+2)
+        fld factVal    ; stack:  BOTTOM: factVal                            :TOP
+        fchs           ; stack:  BOTTOM: -factVal                           :TOP
+        fld i          ; stack:  BOTTOM: -factVal, i                        :TOP
+        fld1           ; stack:  BOTTOM: -factVal, i, 1                     :TOP
+        fadd           ; stack:  BOTTOM: -factVal, i+1                      :TOP
+        fld i          ; stack:  BOTTOM: -factVal, i+1, i                   :TOP
+        fld1           ; stack:  BOTTOM: -factVal, i+1, i, 1                :TOP
+        fld1           ; stack:  BOTTOM: -factVal, i+1, i, 1, 1             :TOP
+        fadd           ; stack:  BOTTOM: -factVal, i+1, i, 2                :TOP
+        fadd           ; stack:  BOTTOM: -factVal, i+1, i+2                 :TOP
+        fmul           ; stack:  BOTTOM: -factVal, (i+1)*(i+2)              :TOP
+        fmul           ; stack:  BOTTOM: (-) * factVal * (i+1)*(i+2)        :TOP
+        fstp factVal   ; factVal = (-) * factVal * (i+1)*(i+2)
+        ; 3. i = i + 2
+        fld i          ; stack:  BOTTOM: i                                 :TOP
+        fld1           ; stack:  BOTTOM: i, 1                              :TOP
+        fld1           ; stack:  BOTTOM: i, 1, 1                           :TOP
+        fadd           ; stack:  BOTTOM: i, 2                              :TOP
+        fadd           ; stack:  BOTTOM: i + 2                             :TOP
+        fstp i         ; i = i + 2
+        add ecx, 2
+        .IF ecx <= 20
+            ; x^i (i <= 20)
+            jmp Repeatedly
+        .ENDIF
+    ; ends
+    ; put sum into ansAddr
+    mov ebx, ansAddr
+    fld sum
+    fstp QWORD PTR [ebx]
+    popad
+    ret
+Cos ENDP
+
+
 
 ;---------------------------------------------------------------------------
 ; TODO: TAN x

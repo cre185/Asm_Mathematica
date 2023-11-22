@@ -531,7 +531,9 @@ CalculateOp PROC,
 		INVOKE Sin, QWORD PTR operand1, tmpOperandAddr
 		INVOKE TopPush, tmpOperandAddr, 8, TYPE_DOUBLE
 	.ELSEIF DWORD PTR [eax] == 534f43h || DWORD PTR [eax] == 20534f43h ; COS
-		; todo
+		INVOKE ToDouble, operand1Addr, size1Addr, type1Addr
+		INVOKE Cos, QWORD PTR operand1, tmpOperandAddr
+		INVOKE TopPush, tmpOperandAddr, 8, TYPE_DOUBLE
 	.ELSEIF DWORD PTR [eax] == 4e4154h || DWORD PTR [eax] == 204e4154h ; TAN
 		; todo
 	.ELSEIF WORD PTR [eax] == 4e4ch ; LN
