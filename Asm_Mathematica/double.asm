@@ -121,6 +121,13 @@ DoubleExp PROC,
 	fld REAL8 PTR [eax]
 	mov eax, [doubleAddr2]
 	mov ecx, [eax+4]
+	.IF ecx == 0
+		fld1
+		mov eax, [doubleAddr1]
+		fstp REAL8 PTR [eax]
+		popad
+		ret
+	.ENDIF
 	dec ecx
 	.WHILE ecx > 0
 		mov eax, [doubleAddr1]

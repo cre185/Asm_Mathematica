@@ -214,8 +214,8 @@ LongMul ENDP
 
 ;---------------------------------------------------------------------------
 LongDiv PROC,
-    longAddr1: DWORD, longAddr2: DWORD, remainderAddr: DWORD
-; This procedure divides two QWORDs, answer is in longAddr1, remainder is in remainderAddr.
+    longAddr1: DWORD, longAddr2: DWORD
+; This procedure divides two QWORDs, answer is in longAddr1, remainder is in longAddr2.
 ;---------------------------------------------------------------------------
     LOCAL isNegative:BYTE, tmpLong:QWORD, tmpLong2:QWORD
     pushad
@@ -252,7 +252,7 @@ LongDiv PROC,
         .ELSE
             INVOKE LongAdd, esi, ebx
         .ENDIF
-        mov edi, [remainderAddr]
+        mov edi, [longAddr2]
         INVOKE LongAssign, edi, esi
         mov ebx, [longAddr1]
         mov DWORD PTR [ebx], 0
@@ -267,13 +267,13 @@ LongDiv PROC,
         mov eax, [ebx+4]
         div ecx ; will not overflow again
         mov [ebx+4], eax
-        mov ebx, [remainderAddr]
+        mov ebx, [longAddr2]
         mov DWORD PTR [ebx], 0
         mov [ebx+4], edx
     .ENDIF
     .IF isNegative != 0
         INVOKE LongNeg, longAddr1
-        INVOKE LongNeg, remainderAddr
+        INVOKE LongNeg, longAddr2
     .ENDIF
     popad
     ret
