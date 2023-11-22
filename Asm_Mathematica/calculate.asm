@@ -534,9 +534,13 @@ CalculateOp PROC,
 		INVOKE Ln, QWORD PTR operand1, tmpOperandAddr
 		INVOKE TopPush, tmpOperandAddr, 8, TYPE_DOUBLE
 	.ELSEIF WORD PTR [eax] == 474ch ; LG
-		; todo
+		INVOKE ToDouble, operand1Addr, size1Addr, type1Addr
+		INVOKE Lg, QWORD PTR operand1, tmpOperandAddr
+		INVOKE TopPush, tmpOperandAddr, 8, TYPE_DOUBLE
 	.ELSEIF DWORD PTR [eax] == 474f4ch || DWORD PTR [eax] == 20474f4ch ; LOG
-		; todo
+		INVOKE ToDouble, operand1Addr, size1Addr, type1Addr
+		INVOKE Log, QWORD PTR operand1, tmpOperandAddr
+		INVOKE TopPush, tmpOperandAddr, 8, TYPE_DOUBLE
 	.ELSEIF DWORD PTR [eax] == 505845h || DWORD PTR [eax] == 20505845h ; EXP
 		INVOKE ToDouble, operand1Addr, size1Addr, type1Addr
 		INVOKE Exp, QWORD PTR operand1, tmpOperandAddr

@@ -32,6 +32,8 @@ maximumTolerableErr REAL8 0.000001
 
 pi REAL8 3.141592653589
 e REAL8 2.718281828459
+ln2 REAL8 0.693147180559
+ln10 REAL8 2.302585092994
 
 .code
 ;---------------------------------------------------------------------------
@@ -536,18 +538,42 @@ Ln PROC,
 Ln ENDP
 
 ;---------------------------------------------------------------------------
-; TODO: LG x
+Lg PROC,
+    x: QWORD, ansAddr:DWORD
 ; the logarithm of x to base 10
 ; method:
 ; 1. lg(x) = ln(x) / ln(10)
 ;---------------------------------------------------------------------------
+    LOCAL lnx: QWORD
+    pushad
+    INVOKE Ln, x, ADDR lnx ; lnx = ln(x)
+    fld lnx ; stack:  BOTTOM: lnx :TOP
+    fld ln10 ; stack:  BOTTOM: lnx, ln10 :TOP
+    fdiv ; stack:  BOTTOM: lnx/ln10 :TOP
+    mov edx, ansAddr
+    fstp QWORD PTR [edx]
+    popad
+    ret
+Lg ENDP
 
 ;---------------------------------------------------------------------------
-; TODO: LOG x
+Log PROC,
+    x: QWORD, ansAddr:DWORD
 ; the logarithm of x to base 2
 ; method:
 ; 1. log(x) = ln(x) / ln(2)
 ;---------------------------------------------------------------------------
+    LOCAL lnx: QWORD
+    pushad
+    INVOKE Ln, x, ADDR lnx ; lnx = ln(x)
+    fld lnx ; stack:  BOTTOM: lnx :TOP
+    fld ln2 ; stack:  BOTTOM: lnx, ln2 :TOP
+    fdiv ; stack:  BOTTOM: lnx/ln2 :TOP
+    mov edx, ansAddr
+    fstp QWORD PTR [edx]
+    popad
+    ret
+Log ENDP
 
 ;---------------------------------------------------------------------------
 ; TODO: POW x y
