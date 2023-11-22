@@ -77,22 +77,23 @@ UpdateOperator ENDP
 
 ;-----------------------------------------------------
 IsOperator PROC,
-	array:DWORD, index:DWORD
-; Examine whether the value array[index] is (or is not) an operator
+	array:DWORD, index:DWORD, targetList:DWORD, targetLength:DWORD
+; Examine whether the value array[index] is (or is not) in targetList
 ; returns length and start of operator or 0 if is not
 ;-----------------------------------------------------
 	LOCAL len:DWORD, j:DWORD
 	pushad
+	mov edi, [targetList]
 	mov ecx, 0
 	mov ebx, array
 	add ebx, index
-	mov al, BYTE PTR [OperatorTable]
-	.WHILE ecx < OperatorTableLength
+	mov al, BYTE PTR [edi]
+	.WHILE ecx < targetLength
 		.IF al == BYTE PTR [ebx] && al != 0
 			pushad
 			mov esi, ecx
 			dec ecx
-			.IF BYTE PTR [OperatorTable+ecx] == 32 || BYTE PTR [OperatorTable+ecx] == 0
+			.IF BYTE PTR [edi+ecx] == 32 || BYTE PTR [edi+ecx] == 0
 				mov ecx, 0
 				.REPEAT
 					inc ecx
@@ -100,7 +101,7 @@ IsOperator PROC,
 					mov ebx, array
 					add ebx, index
 					mov al, BYTE PTR [ebx+ecx]
-					mov dl, BYTE PTR [OperatorTable+esi]
+					mov dl, BYTE PTR [edi+esi]
 				.UNTIL dl == 32 || dl != al
 				.IF dl == 32
 					mov len, ecx
@@ -116,11 +117,11 @@ IsOperator PROC,
 			popad
 			.REPEAT
 				inc ecx
-				mov al, BYTE PTR [OperatorTable+ecx]
+				mov al, BYTE PTR [edi+ecx]
 			.UNTIL al == 32
 		.ENDIF
 		inc ecx
-		mov al, BYTE PTR [OperatorTable+ecx]
+		mov al, BYTE PTR [edi+ecx]
 	.ENDW
 	popad
 	mov eax, 0
@@ -225,7 +226,7 @@ RightBrace ENDP
 AddBrace PROC,
 	array:DWORD, i:DWORD, j:DWORD, k:DWORD 
 ; Add braces on both side of an operator
-; i: position of operator in buffer, j: position of op in oplist k: op length
+; i: position of operator in buffer, k: op length
 ;-----------------------------------------------------
 	pushad
 	mov ecx, j
@@ -347,65 +348,31 @@ PolishNotation PROC
 		push ecx
 		INVOKE UpdateOperator, ecx
 		mov i, 0
-		mov bl, BYTE PTR [recvBuffer]
-		.WHILE bl != 0
-			mov j, 0
-			mov al, BYTE PTR [OperatorList]
-			.WHILE al != 0
-				.IF bl == al && al != 32
-					pushad
-					mov ecx, i
-					dec ecx 
-					.IF ecx < 80000000h
-						INVOKE IsOperator, ADDR recvBuffer, ecx
-						.IF eax >= 2; the op is another op's suffix and has been treated
-							popad
-							jmp restart
-						.ENDIF
-					.ENDIF
-					
-					mov k, 1
-					mov ecx, j
-					inc ecx
-					mov al, BYTE PTR [OperatorList+ecx]
-					mov ecx, i
-					inc ecx 
-					mov bl, BYTE PTR [recvBuffer+ecx]
-					.WHILE al == bl && al != 0 && bl != 0 && al != 32
-						inc k
-						mov ecx, j
-						add ecx, k
-						mov al, BYTE PTR [OperatorList+ecx]
-						mov ecx, i
-						add ecx, k
-						mov bl, BYTE PTR [recvBuffer+ecx]
-					.ENDW
-					.IF al == 32 ; i: position of operator in buffer, j: position of op in oplist k: op length
-						INVOKE AddBrace, ADDR recvBuffer, i, j, k
-						mov eax, i
-						add eax, k
-						mov i, eax
+		mov al, BYTE PTR [recvBuffer]
+		.WHILE al != 0
+			INVOKE IsOperator, ADDR recvBuffer, i, ADDR OperatorList, OperatorListLength
+			.IF eax != 0
+				pushad
+				mov k, eax
+				mov j, ebx
+				mov ecx, i
+				dec ecx
+				.IF ecx < 80000000h
+					INVOKE IsOperator, ADDR recvBuffer, ecx, ADDR OperatorTable, OperatorTableLength
+					.IF eax >= 2; the op is another op's suffix and has been treated
 						popad
 						jmp restart
 					.ENDIF
-					popad
 				.ENDIF
-				.REPEAT
-					inc j
-					mov ecx, j
-					mov al, BYTE PTR [OperatorList+ecx]
-				.UNTIL al == 32 || al == 0
-				.IF al == 0
-					jmp restart
-				.ENDIF
-				inc j
-				mov ecx, j
-				mov al, BYTE PTR [OperatorList+ecx]
-			.ENDW
+				popad
+				INVOKE AddBrace, ADDR recvBuffer, i, j, k
+				mov ecx, k
+				add i, ecx
+			.ENDIF
 			restart:
 			inc i
 			mov ecx, i
-			mov bl, BYTE PTR [recvBuffer+ecx]
+			mov al, BYTE PTR [recvBuffer+ecx]
 		.ENDW
 		pop ecx 
 		inc ecx
@@ -426,13 +393,13 @@ PolishNotation PROC
 	mov ecx, MaxBufferSize
 	.REPEAT
 		dec ecx
-		INVOKE IsOperator, ADDR recvBuffer, ecx
+		INVOKE IsOperator, ADDR recvBuffer, ecx, ADDR OperatorTable, OperatorTableLength
 		.IF eax != 0
 			pushad ; ecx -> 'Op'...)
 			pushad
 			dec ecx
 			.IF ecx < 80000000h
-				INVOKE IsOperator, ADDR recvBuffer, ecx
+				INVOKE IsOperator, ADDR recvBuffer, ecx, ADDR OperatorTable, OperatorTableLength
 				.IF eax >= 2; the op is another op's suffix and has been treated
 					popad
 					jmp removeStart
@@ -800,7 +767,7 @@ CalculatePN PROC
 		; now we need to determine whether it is an operand or an operator
 		sub ecx, ansBufferStartingLoc
 		mov ansBufferLen, ecx
-		INVOKE IsOperator, ADDR ansBuffer, ansBufferStartingLoc
+		INVOKE IsOperator, ADDR ansBuffer, ansBufferStartingLoc, ADDR OperatorTable, OperatorTableLength
 		; if eax == 0, then it is an operand
 		.IF eax == 0
 			; put the [ansBufferStartingLoc, ansBufferLoc) into tmpArray
