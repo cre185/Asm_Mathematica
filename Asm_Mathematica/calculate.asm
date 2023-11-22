@@ -569,7 +569,9 @@ CalculateOp PROC,
 	.ELSEIF DWORD PTR [eax] == 474f4ch || DWORD PTR [eax] == 20474f4ch ; LOG
 		; todo
 	.ELSEIF DWORD PTR [eax] == 505845h || DWORD PTR [eax] == 20505845h ; EXP
-		; todo
+		INVOKE ToDouble, operand1Addr, size1Addr, type1Addr
+		INVOKE Exp, QWORD PTR operand1, tmpOperandAddr
+		INVOKE TopPush, tmpOperandAddr, 8, TYPE_DOUBLE
 	.ELSE
 		jmp TypeDif1
 	.ENDIF
