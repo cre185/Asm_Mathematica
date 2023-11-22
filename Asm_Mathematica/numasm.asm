@@ -28,7 +28,7 @@ ln10Value BYTE "2.3025850929940456840179914546844", 0
 ln2Value BYTE "0.69314718055994530941723212145818", 0
 c0Value BYTE "299792458", 0
 
-maximumTolerableErr REAL8 1e-6
+maximumTolerableErr REAL8 0.000001
 
 .code
 ;---------------------------------------------------------------------------
@@ -194,22 +194,18 @@ Sqrt PROC,
         fld tNext ; stack:  BOTTOM: t_{n}, t_{n+1}  :TOP
         fsub    ; stack:  BOTTOM: t_{n+1} - t_{n}   :TOP
         fabs    ; stack:  BOTTOM: |t_{n+1} - t_{n}| :TOP
-        fld maximumTolerableErr ; stack:  BOTTOM: |t_{n+1} - t_{n}|, 1e-6 :TOP
-        fcomp st(1), st(0) ; st(1) = |t_{n+1} - t_{n}|, st(0) = 1e-6
-        .IF CARRY? == 0
-            ; || > 1e-6
-            ; recursively calculate
-            fld tNext
-            fstp t
-            jmp Recursively
-        .ELSE
-            ; || < 1e-6
+        fcomp maximumTolerableErr ; compare |t_{n+1} - t_{n}| with 1e-6
+        .IF CARRY? 
+        ; |t_{n+1} - t_{n}| < 1e-6
             ; stop
             fld tNext
-            mov edx, ansAddr
-            fstp REAL8 PTR [edx]
-            popad
-            ret
+            mov ebx, ansAddr
+            fstp QWORD PTR [ebx]
+        .ELSE
+            ; |t_{n+1} - t_{n}| >= 1e-6
+            fld tNext
+            fstp t ; t = t_{n+1}
+            jmp Recursively 
         .ENDIF
     popad
     ret
