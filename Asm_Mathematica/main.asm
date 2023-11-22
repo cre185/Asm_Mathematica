@@ -353,6 +353,13 @@ HelpWinProc PROC,
 	mov eax, localMsg
 	.IF eax == WM_CREATE
 		INVOKE SetWindowPos, hWnd, NULL, 50, 50, 800, 800, SWP_NOZORDER
+	.ELSEIF eax == WM_CTLCOLORSTATIC
+		mov eax, wParam
+		;mov edx, 0ff0000h
+		;INVOKE SetTextColor, eax, edx 
+		mov edx, 0ffffffh
+		INVOKE CreateSolidBrush, edx
+		ret
 	.ELSEIF eax == WM_CLOSE
 		INVOKE ShowWindow, hWnd, SW_HIDE
 		jmp HelpProcExit

@@ -11,7 +11,7 @@ MY_CHANGESTATIC EQU 1000h
 
 MaxBufferSize EQU 1024
 OperatorListLength EQU 64
-OperatorTableHeight EQU 6
+OperatorTableHeight EQU 7
 OperatorTableLength EQU OperatorListLength*OperatorTableHeight
 
 MaxMathStackSize EQU 32768
