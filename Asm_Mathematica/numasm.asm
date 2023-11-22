@@ -402,10 +402,13 @@ Tan ENDP
 ; TODO: LN x
 ; the natural logarithm of x
 ; method:
-; 1. find the integer n such that e^{n} < x < e^{n+1}
-; 2. expand at (e^n, n), we have:
-; 3. ln(x) = n + e^{-n}(x - e^n) - e^{-2n}(x - e^n)^2/2 + e^{-3n}(x - e^n)^3/3 - ...
-; 4. stop calculating the series when the absolute value of the term is less than 1e-6
+; 1. let t_{0} = an approximation of ln(x)
+; 2. recursively: t_{n+1} = t_{n} - 1 + x/e^{t_{n}}, until |t_{n+1} - t_{n}| < 1e-6
+; 
+; PROOF:
+; tangent line at (t_{n}, ln(t_{n})):
+; e^{t_{n}}(t_{n+1} - t_{n}) + e^{t_{n}} - x = 0
+; ==> t_{n+1} = t_{n} - 1 + x/e^{t_{n}}
 ;---------------------------------------------------------------------------
 
 ;---------------------------------------------------------------------------
