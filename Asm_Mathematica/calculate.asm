@@ -385,6 +385,9 @@ PolishNotation PROC
 					mov ecx, j
 					mov al, BYTE PTR [OperatorList+ecx]
 				.UNTIL al == 32 || al == 0
+				.IF al == 0
+					jmp restart
+				.ENDIF
 				inc j
 				mov ecx, j
 				mov al, BYTE PTR [OperatorList+ecx]
@@ -521,7 +524,7 @@ CalculateOp PROC,
 	mov eax, [Op]
 	.IF DWORD PTR [eax] == 54525153h ; SQRT
 		INVOKE ToDouble, operand1Addr, size1Addr, type1Addr
-		INVOKE Sqrt, QWORD PTR [operand1Addr], tmpOperandAddr
+		INVOKE Sqrt, QWORD PTR operand1, tmpOperandAddr
 		INVOKE TopPush, tmpOperandAddr, 8, TYPE_DOUBLE
 	.ELSEIF DWORD PTR [eax] == 4e4953h || DWORD PTR [eax] == 204e4953h ; SIN
 		; todo
@@ -537,8 +540,12 @@ CalculateOp PROC,
 		; todo
 	.ELSEIF DWORD PTR [eax] == 505845h || DWORD PTR [eax] == 20505845h ; EXP
 		; todo
+	.ELSE
+		jmp TypeDif1
 	.ENDIF
+	jmp endFlag
 	; These ops cares!
+	TypeDif1:
 	mov eax, [Op]
 	.IF type1 == TYPE_INT
 		.IF DWORD PTR [eax] == 20534241h || DWORD PTR [eax] == 534241h ; ABS
@@ -642,8 +649,13 @@ CalculateOp PROC,
 		INVOKE TopPush, operand1Addr, 1, TYPE_BOOL
 	.ELSEIF DWORD PTR [eax] == 574f50h || DWORD PTR [eax] == 20574f50h ; POW
 		; todo
+	.ELSE
+		jmp TypeDif2
 	.ENDIF
+	jmp endFlag
 	; These ops cares!
+	TypeDif2:
+	mov eax, [Op]
 	.IF type1 == TYPE_DOUBLE || type2 == TYPE_DOUBLE
 		mov eax, [Op]
 		.IF BYTE PTR [eax] == 94 ; ^

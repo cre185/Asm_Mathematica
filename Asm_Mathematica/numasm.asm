@@ -175,7 +175,7 @@ Sqrt PROC,
 ; l_n(t_{n+1}) = 0 <==> t_{n+1} = (t_{n} + x/t_{n})/2
 ; t_{n} shall --> \sqrt{x}
 ;---------------------------------------------------------------------------
-    LOCAL t: QWORD, tNext: QWORD
+    LOCAL t: QWORD, tNext: QWORD, tmp:QWORD
     pushad
     fld x
     fstp t ; t_{0} = x
@@ -195,12 +195,16 @@ Sqrt PROC,
         fsub    ; stack:  BOTTOM: t_{n+1} - t_{n}   :TOP
         fabs    ; stack:  BOTTOM: |t_{n+1} - t_{n}| :TOP
         fcomp maximumTolerableErr ; compare |t_{n+1} - t_{n}| with 1e-6
-        .IF CARRY? 
+        fnstsw ax
+        sahf
+        .IF CARRY?
         ; |t_{n+1} - t_{n}| < 1e-6
             ; stop
             fld tNext
             mov ebx, ansAddr
             fstp QWORD PTR [ebx]
+            popad 
+            ret
         .ELSE
             ; |t_{n+1} - t_{n}| >= 1e-6
             fld tNext
