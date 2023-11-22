@@ -150,8 +150,20 @@ DoubleExp PROC,
 	shl edx, 1
 	.IF eax != edx
 		; that eax is odd
-		fld REAL8 PTR [doubleAddr1]
-		fstp product
+		mov ecx, eax
+		shl ecx, 1
+		shr ecx, 1
+		.IF ecx == eax
+			; that eax represents a positive number
+			fld REAL8 PTR [doubleAddr1]
+			fstp product
+		.ELSE
+			; that eax represents a negative number
+			fld1
+			fld REAL8 PTR [doubleAddr1]
+			fdiv
+			fstp product
+		.ENDIF
 	.ENDIF
 	; put eax >> 1 in tmpExp
 	sar eax, 1
