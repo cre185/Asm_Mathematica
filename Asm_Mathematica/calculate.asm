@@ -9,6 +9,7 @@ include			longInt.inc
 include			double.inc
 include			boolean.inc
 include			variables.inc
+include			numasm.inc
 strncpy			PROTO C :ptr sbyte, :ptr sbyte, :DWORD
 strcpy			PROTO C :ptr sbyte, :ptr sbyte
 strcat			PROTO C :ptr sbyte, :ptr sbyte
@@ -529,6 +530,12 @@ CalculateOp PROC,
 			.ELSE 
 				INVOKE GetHistory, edx
 			.ENDIF
+		.ELSEIF DWORD PTR [eax] == 54434146h
+			mov edx, operand1Addr
+			add edx, 4
+			mov ebx, [edx]
+			INVOKE Fact, ebx, tmpLongAddr
+			INVOKE TopPush, tmpLongAddr, 8, TYPE_INT
 		.ELSE
 			jmp BinaryOp
 		.ENDIF

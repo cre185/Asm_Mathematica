@@ -116,7 +116,7 @@ SetConstant PROC
 SetConstant ENDP
 
 ;---------------------------------------------------------------------------
-FACT PROC,
+Fact PROC,
     x: DWORD, ansAddr:DWORD
 ; the factorial of x(being a non-negative integer), puts ans into ansAddr
 ; method:
@@ -141,10 +141,17 @@ FACT PROC,
         ret
     .ENDIF
     ; x > 12
-    
+    mov eax, x
+    dec eax ; eax = x-1
+    INVOKE Fact, eax, ansAddr ; get (x-1)! into ansAddr
+    lea ebx, tmpLong
+    mov edx, x
+    mov DWORD PTR[ebx], 0
+    mov DWORD PTR [ebx+4], edx ; tmpLong = x
+    INVOKE LongMul, ansAddr, ADDR tmpLong ; ans = (x-1)! * x
     popad
     ret
-FACT ENDP
+Fact ENDP
 
 ;---------------------------------------------------------------------------
 ; TODO: SQRT x

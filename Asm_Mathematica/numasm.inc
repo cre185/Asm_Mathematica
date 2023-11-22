@@ -3,4 +3,6 @@ NUMASM_INC equ <1>
 
 SetConstant PROTO
 
+Fact PROTO :DWORD, :DWORD
+
 ENDIF
