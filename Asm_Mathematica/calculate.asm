@@ -481,7 +481,7 @@ CalculateOp PROC,
 	LOCAL size1Addr:DWORD, size2Addr:DWORD
 	LOCAL operand1[128]:BYTE, operand2[128]:BYTE
 	LOCAL operand1Addr:DWORD, operand2Addr:DWORD
-	LOCAL tmpLong:QWORD, tmpLongAddr:DWORD, tmpPtr:DWORD
+	LOCAL tmpOperand:QWORD, tmpOperandAddr:DWORD, tmpPtr:DWORD
 	pushad
 	LEA eax, type1
 	mov type1Addr, eax
@@ -495,8 +495,8 @@ CalculateOp PROC,
 	mov operand1Addr, eax
 	LEA eax, operand2
 	mov operand2Addr, eax
-	LEA eax, tmpLong
-	mov tmpLongAddr, eax
+	LEA eax, tmpOperand
+	mov tmpOperandAddr, eax
 	INVOKE memset, ADDR operand1, 0, 128
 	INVOKE memset, ADDR operand2, 0, 128
 
@@ -520,7 +520,9 @@ CalculateOp PROC,
 	; Ops that can calculate using all types
 	mov eax, [Op]
 	.IF DWORD PTR [eax] == 54525153h ; SQRT
-		; todo
+		INVOKE ToDouble, operand1Addr, size1Addr, type1Addr
+		INVOKE Sqrt, QWORD PTR [operand1Addr], tmpOperandAddr
+		INVOKE TopPush, tmpOperandAddr, 8, TYPE_DOUBLE
 	.ELSEIF DWORD PTR [eax] == 4e4953h || DWORD PTR [eax] == 204e4953h ; SIN
 		; todo
 	.ELSEIF DWORD PTR [eax] == 534f43h || DWORD PTR [eax] == 20534f43h ; COS
@@ -558,8 +560,8 @@ CalculateOp PROC,
 			mov edx, operand1Addr
 			add edx, 4
 			mov ebx, [edx]
-			INVOKE Fact, ebx, tmpLongAddr
-			INVOKE TopPush, tmpLongAddr, 8, TYPE_INT
+			INVOKE Fact, ebx, tmpOperandAddr
+			INVOKE TopPush, tmpOperandAddr, 8, TYPE_INT
 		.ELSE
 			jmp BinaryOp
 		.ENDIF
