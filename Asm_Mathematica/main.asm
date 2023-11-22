@@ -61,10 +61,11 @@ ErrorTitle  BYTE "Error",0
 
 WindowName  BYTE "Asm Mathematica",0
 className   BYTE "ASMWin",0
-
-fileMsg    BYTE "File",0
-subMsg     BYTE "New",0
-sub2ndMsg  BYTE "Open",0
+helpMsg    BYTE "Help",0
+subMsg     BYTE "About",0
+sub2ndMsg  BYTE "Document",0
+openText   BYTE "open",0
+urlText    BYTE "https://github.com/cre185/Asm_Mathematica",0
 
 msg	      MSGStruct <>
 winRect   RECT <>
@@ -73,9 +74,9 @@ mainScroll    SCROLLINFO <>
 hMainWnd  DWORD 0
 public hMainWnd
 
-hFileMenu DWORD ?
+hHelpMenu DWORD ?
 hSubMenu  DWORD ?
-public hFileMenu, hSubMenu
+public hHelpMenu, hSubMenu
 
 hInstance DWORD ?
 public hInstance
@@ -181,13 +182,13 @@ InitMenu PROC
 ; Initialize the menu
 ;-----------------------------------------------------
 	INVOKE CreateMenu
-	mov hFileMenu, eax
+	mov hHelpMenu, eax
 	INVOKE CreateMenu
 	mov hSubMenu, eax
-	INVOKE AppendMenuA, hSubMenu, 0, NULL, ADDR subMsg
-	INVOKE AppendMenuA, hSubMenu, 0, NULL, ADDR sub2ndMsg
-	INVOKE AppendMenuA, hFileMenu, 10h, hSubMenu, ADDR fileMsg
-	INVOKE SetMenu, hMainWnd, hFileMenu
+	INVOKE AppendMenuA, hSubMenu, 0, IDM_ABOUT, ADDR subMsg
+	INVOKE AppendMenuA, hSubMenu, 0, IDM_DOCUMENT, ADDR sub2ndMsg
+	INVOKE AppendMenuA, hHelpMenu, 10h, hSubMenu, ADDR helpMsg
+	INVOKE SetMenu, hMainWnd, hHelpMenu
 	ret
 InitMenu ENDP
 
@@ -232,6 +233,7 @@ IncreaseScrollBarParam PROC,
 	INVOKE GetWindowRect, hMainWnd, ADDR winRect
 	mov eax, scrollHeight
 	sub eax, winRect.bottom
+	add eax, 20h
 	.IF eax < 80000000h
 		mov mainScroll.nMax, eax
 	.ELSE
@@ -290,6 +292,13 @@ WinProc PROC,
 			INVOKE ScrollingWindow, -30
 		.ELSE
 			INVOKE ScrollingWindow, 30
+		.ENDIF
+	.ELSEIF eax == WM_COMMAND
+		mov eax, wParam
+		.IF ax == IDM_ABOUT 
+			INVOKE ShellExecute, hWnd, ADDR openText, ADDR urlText, NULL, NULL, SW_SHOWNORMAL
+		.ELSEIF ax == IDM_DOCUMENT
+			; todo
 		.ENDIF
 	.ENDIF
 	INVOKE DefWindowProc, hWnd, localMsg, wParam, lParam
