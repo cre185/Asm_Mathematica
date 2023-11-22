@@ -576,11 +576,26 @@ Log PROC,
 Log ENDP
 
 ;---------------------------------------------------------------------------
-; TODO: POW x y
+Pow PROC,
+    x: QWORD, y: QWORD, ansAddr:DWORD
 ; x^y
 ; method:
 ; 1. pow(x, y) = exp(y * ln(x))
 ;---------------------------------------------------------------------------
+    LOCAL lnx: QWORD, yTimesLNX: QWORD, yToTheX: QWORD
+    pushad
+    INVOKE Ln, x, ADDR lnx ; lnx = ln(x)
+    fld y ; stack:  BOTTOM: y :TOP
+    fld lnx ; stack:  BOTTOM: y, lnx :TOP
+    fmul ; stack:  BOTTOM: y*lnx :TOP
+    fstp yTimesLNX ; yTimesLNX = y*lnx
+    INVOKE Exp, yTimesLNX, ADDR yToTheX ; yToTheX = e^{y*lnx}
+    mov edx, ansAddr
+    fld yToTheX
+    fstp QWORD PTR [edx]
+    popad
+    ret
+Pow ENDP
 
 
 END
