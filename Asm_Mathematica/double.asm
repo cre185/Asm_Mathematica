@@ -11,7 +11,7 @@ sprintf         PROTO C :ptr sbyte, :ptr sbyte, :VARARG
 
 .data
 doubleStr BYTE "%lf",0
-longStr BYTE "%ld",0
+longStr BYTE "%lld",0
 
 .code
 ;-----------------------------------------------------

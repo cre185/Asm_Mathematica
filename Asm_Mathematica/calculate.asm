@@ -25,13 +25,15 @@ public recvBuffer, ansBuffer
 OperatorTable BYTE "* / ^ %                                                        ",0
 			  BYTE "+ -                                                            ",0
 			  BYTE "ABS NEG IN OUT FACT                                            ",0
-			  BYTE "== && ||                                                       ",0
+			  BYTE "== !=                                                          ",0
+			  BYTE "&& ||                                                          ",0
 			  BYTE ":=                                                             ",0
 ; Type: lower bit 0 for binary, 1 for unary; second bit 0 for operator, 1 for function
 OperatorType  BYTE " 0 0 0 0                                                       ",0
 			  BYTE " 0 0                                                           ",0
 			  BYTE "   3   3  3   3    3                                           ",0
-			  BYTE "  0  0  0                                                      ",0
+			  BYTE "  0  0                                                         ",0
+			  BYTE "  0  0                                                         ",0
 			  BYTE "  0                                                            ",0
 OperatorList BYTE OperatorListLength DUP(0)
 OpTypeList   BYTE OperatorListLength DUP(0)
@@ -645,10 +647,15 @@ CalculateOp PROC,
 		.ELSEIF WORD PTR [eax] == 3d3dh
 			INVOKE DoubleEqu, operand1Addr, operand2Addr
 			INVOKE TopPush, operand1Addr, 1, TYPE_BOOL
+		.ELSEIF WORD PTR [eax] == 3d21h
+			INVOKE DoubleEqu, operand1Addr, operand2Addr
+			INVOKE BoolNot, operand1
+			mov operand1, al
+			INVOKE TopPush, operand1Addr, 1, TYPE_BOOL
 		.ELSE
 			INVOKE TopPushStandardError
 		.ENDIF
-	.ELSEIF type1 == TYPE_INT || type2 == TYPE_INT
+	.ELSE
 		INVOKE ToLong, operand1Addr, size1Addr, type1Addr
 		INVOKE ToLong, operand2Addr, size2Addr, type2Addr
 		mov eax, [Op]
@@ -674,6 +681,11 @@ CalculateOp PROC,
 			INVOKE TopPush, operand2Addr, 8, TYPE_INT
 		.ELSEIF WORD PTR [eax] == 3d3dh
 			INVOKE LongEqu, operand1Addr, operand2Addr
+			INVOKE TopPush, operand1Addr, 1, TYPE_BOOL
+		.ELSEIF WORD PTR [eax] == 3d21h
+			INVOKE LongEqu, operand1Addr, operand2Addr
+			INVOKE BoolNot, operand1
+			mov operand1, al
 			INVOKE TopPush, operand1Addr, 1, TYPE_BOOL
 		.ELSE 
 			INVOKE TopPushStandardError
