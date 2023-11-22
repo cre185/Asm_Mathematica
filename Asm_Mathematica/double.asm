@@ -171,7 +171,13 @@ DoubleExp PROC,
 		.ENDIF
 	.ENDIF
 	; put eax >> 1 in tmpExp
-	sar eax, 1
+	.IF eax != edx && eax != ecx
+		; that eax is a negative odd number
+		sar eax, 1
+		inc eax
+	.ELSE
+		sar eax, 1
+	.ENDIF
 	lea ebx, tmpExp
 	add ebx, 4
 	mov [ebx], eax
