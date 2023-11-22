@@ -69,8 +69,8 @@ subMsg     BYTE "About",0
 sub2ndMsg  BYTE "Document",0
 openText   BYTE "open",0
 urlText    BYTE "https://github.com/cre185/Asm_Mathematica",0
-STATIC BYTE "Static",0
-helpText   BYTE 4096 DUP(0)
+STATIC     BYTE "Static",0
+helpText   BYTE "asdfsad",0dh,0ah,"another",4096 DUP(0)
 
 msg	      MSGStruct <>
 winRect   RECT <>
@@ -331,7 +331,7 @@ WinProc PROC,
 				ANTIALIASED_QUALITY, FF_DONTCARE, ADDR FontText
 			mov StandardFont, eax
 			INVOKE CreateWindowEx, 0, ADDR STATIC, 
-				ADDR STATIC,WS_CHILD+WS_VISIBLE+SS_CENTER, 
+				ADDR helpText,WS_CHILD+WS_VISIBLE+SS_CENTER, 
 				15,20,750,720,
 				hHelpWnd,NULL,hInstance,NULL
 			.IF eax == 0

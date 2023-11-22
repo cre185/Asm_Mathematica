@@ -666,7 +666,7 @@ CalculateOp PROC,
 	; Ops that can calculate using all types
 	mov eax, [Op]
 	.IF BYTE PTR [eax] == 94 ; ^
-		INVOKE ToDouble, operand1Addr, size1Addr, type1Addr
+		INVOKE ToLong, operand1Addr, size1Addr, type1Addr
 		INVOKE ToDouble, operand2Addr, size2Addr, type2Addr
 		INVOKE DoubleExp, operand2Addr, operand1Addr
 		INVOKE TopPush, operand2Addr, 8, TYPE_DOUBLE

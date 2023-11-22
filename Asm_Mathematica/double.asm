@@ -129,15 +129,18 @@ DoubleExp PROC,
 	.IF eax == 0
 		; put 1 in [doubleAddr1]
 		fld1
-		fstp REAL8 PTR [doubleAddr1]
+		mov esi, [doubleAddr1]
+		fstp REAL8 PTR [esi]
 		popad
 		ret
 	.ENDIF
 	.IF eax == 0ffffffffh
 		fld1
-		fld REAL8 PTR [doubleAddr1]
+		mov esi, [doubleAddr1]
+		fld REAL8 PTR [esi]
 		fdiv
-		fstp REAL8 PTR [doubleAddr1]
+		mov esi, [doubleAddr1]
+		fstp REAL8 PTR [esi]
 		popad
 		ret
 	.ENDIF
@@ -155,12 +158,14 @@ DoubleExp PROC,
 		shr ecx, 1
 		.IF ecx == eax
 			; that eax represents a positive number
-			fld REAL8 PTR [doubleAddr1]
+			mov esi, [doubleAddr1]
+			fld REAL8 PTR [esi]
 			fstp product
 		.ELSE
 			; that eax represents a negative number
 			fld1
-			fld REAL8 PTR [doubleAddr1]
+			mov esi, [doubleAddr1]
+			fld REAL8 PTR [esi]
 			fdiv
 			fstp product
 		.ENDIF
@@ -171,7 +176,8 @@ DoubleExp PROC,
 	add ebx, 4
 	mov [ebx], eax
 	
-	fld REAL8 PTR [doubleAddr1]
+	mov esi, [doubleAddr1]
+	fld REAL8 PTR [esi]
 	fstp tmpDouble
 	INVOKE DoubleExp, ADDR tmpDouble, ADDR tmpExp
 	fld product
@@ -179,7 +185,8 @@ DoubleExp PROC,
 	fld tmpDouble
 	fmul
 	fmul
-	fstp REAL8 PTR [doubleAddr1]
+	mov esi, [doubleAddr1]
+	fstp REAL8 PTR [esi]
 	popad
 	ret
 DoubleExp ENDP
