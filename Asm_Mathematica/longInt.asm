@@ -13,7 +13,7 @@ sprintf         PROTO C :ptr sbyte, :ptr sbyte, :VARARG
 strlen			PROTO C :ptr sbyte
 
 .data
-longStr BYTE "%ld",0
+longStr BYTE "%lld",0
 
 .code
 ;---------------------------------------------------------------------------

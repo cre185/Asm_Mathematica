@@ -141,12 +141,14 @@ Fact PROC,
         ret
     .ENDIF
     ; x > 12
+    mov eax, [ansAddr]
+    mov DWORD PTR [eax], 0
     mov eax, x
     dec eax ; eax = x-1
     INVOKE Fact, eax, ansAddr ; get (x-1)! into ansAddr
     lea ebx, tmpLong
     mov edx, x
-    mov DWORD PTR[ebx], 0
+    mov DWORD PTR [ebx], 0
     mov DWORD PTR [ebx+4], edx ; tmpLong = x
     INVOKE LongMul, ansAddr, ADDR tmpLong ; ans = (x-1)! * x
     popad

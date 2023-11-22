@@ -3,6 +3,7 @@ BOOLEAN_INC equ <1>
 
 BoolAnd PROTO :BYTE, :BYTE
 BoolOr PROTO :BYTE, :BYTE
+BoolNot PROTO :BYTE
 BoolXor PROTO :BYTE, :BYTE
 
 LongToBool PROTO :DWORD
