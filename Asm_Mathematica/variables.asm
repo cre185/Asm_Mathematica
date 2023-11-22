@@ -12,7 +12,7 @@ memset			PROTO C :ptr sbyte, :DWORD, :DWORD
 strlen			PROTO C :ptr sbyte
 
 .data
-variableHashTable BYTE MaxVariableHashTableSize*256 DUP(0) ; MaxVariableHashTableSize elems, each elem is 256 bytes
+variableHashTable BYTE MaxVariableHashTableSize*MaxVariableHashTableElemSize DUP(0) ; MaxVariableHashTableSize elems, each elem is 256 bytes
 
 .code
 ;---------------------------------------------------------------------------

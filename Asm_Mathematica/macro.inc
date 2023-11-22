@@ -28,5 +28,6 @@ TYPE_ARRAY      EQU     9
 TYPE_ERROR      EQU     10
 
 MaxVariableHashTableSize EQU 1024
+MaxVariableHashTableElemSize EQU 256
 
 ENDIF
