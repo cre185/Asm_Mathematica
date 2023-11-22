@@ -40,8 +40,7 @@ SCROLLINFO ENDS
 
 MAIN_WINDOW_STYLE = WS_VISIBLE+WS_DLGFRAME+WS_CAPTION+WS_BORDER+WS_SYSMENU \
 	+WS_MAXIMIZEBOX+WS_MINIMIZEBOX+WS_THICKFRAME+WS_VSCROLL
-HELP_WINDOW_STYLE = WS_VISIBLE+WS_DLGFRAME+WS_CAPTION+WS_BORDER+WS_SYSMENU \
-	+WS_MAXIMIZEBOX+WS_MINIMIZEBOX+WS_THICKFRAME
+HELP_WINDOW_STYLE = WS_VISIBLE+WS_CAPTION+WS_SYSMENU
 
 ;==================== DATA =======================
 .data
@@ -70,6 +69,8 @@ subMsg     BYTE "About",0
 sub2ndMsg  BYTE "Document",0
 openText   BYTE "open",0
 urlText    BYTE "https://github.com/cre185/Asm_Mathematica",0
+STATIC BYTE "Static",0
+helpText   BYTE 4096 DUP(0)
 
 msg	      MSGStruct <>
 winRect   RECT <>
@@ -89,10 +90,13 @@ public hInstance
 scrollHeight DWORD 40h
 public scrollHeight
 
+FontText BYTE "Arial",0
+StandardFont DWORD ?
+
 ; Define the Application's Window class structure.
 MainWin WNDCLASS <NULL,WinProc,NULL,NULL,NULL,NULL,NULL, \
 	COLOR_WINDOW,NULL,className>
-HelpWin WNDCLASS <NULL,WinProc,NULL,NULL,NULL,NULL,NULL, \
+HelpWin WNDCLASS <NULL,HelpWinProc,NULL,NULL,NULL,NULL,NULL, \
 	COLOR_WINDOW,NULL,helpWindow>
 ;=================== CODE =========================
 .code
@@ -274,13 +278,10 @@ WinProc PROC,
 	mov eax, localMsg
 
 	.IF eax == WM_CREATE		; create window
-		; Initiate the edit box
 		jmp WinProcExit
 	.ELSEIF eax == WM_CLOSE		; close window
 		INVOKE PostQuitMessage,0
 		jmp WinProcExit
-	.ELSEIF eax == WM_SIZE
-		INVOKE ChangeBoxSize
 	.ELSEIF eax == WM_VSCROLL
 		mov eax, SIZE mainScroll
 		mov mainScroll.cbSize, eax
@@ -317,10 +318,26 @@ WinProc PROC,
 			INVOKE ShellExecute, hWnd, ADDR openText, ADDR urlText, NULL, NULL, SW_SHOWNORMAL
 		.ELSEIF ax == IDM_DOCUMENT
 			INVOKE CreateWindowEx, 0, ADDR helpWindow,
-			  ADDR HelpName,HELP_WINDOW_STYLE,
-			  CW_USEDEFAULT,CW_USEDEFAULT,CW_USEDEFAULT,
-			  CW_USEDEFAULT,NULL,NULL,hInstance,NULL
+			    ADDR HelpName,HELP_WINDOW_STYLE,
+			    50,50,800,800,
+				hWnd,NULL,hInstance,NULL
+			.IF eax == 0
+				INVOKE ErrorHandler
+			.ENDIF
 			mov hHelpWnd,eax
+			; Get the help text here
+			INVOKE CreateFont, 20, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE,
+				ANSI_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+				ANTIALIASED_QUALITY, FF_DONTCARE, ADDR FontText
+			mov StandardFont, eax
+			INVOKE CreateWindowEx, 0, ADDR STATIC, 
+				ADDR STATIC,WS_CHILD+WS_VISIBLE+SS_CENTER, 
+				15,20,750,720,
+				hHelpWnd,NULL,hInstance,NULL
+			.IF eax == 0
+				INVOKE ErrorHandler
+			.ENDIF
+			INVOKE SendMessage, eax, WM_SETFONT, StandardFont, 1
 		.ENDIF
 	.ENDIF
 	INVOKE DefWindowProc, hWnd, localMsg, wParam, lParam
@@ -328,6 +345,23 @@ WinProc PROC,
 WinProcExit:
 	ret
 WinProc ENDP
+
+;-----------------------------------------------------
+HelpWinProc PROC,
+	hWnd:DWORD, localMsg:DWORD, wParam:DWORD, lParam:DWORD
+;-----------------------------------------------------
+	mov eax, localMsg
+	.IF eax == WM_CREATE
+		INVOKE SetWindowPos, hWnd, NULL, 50, 50, 800, 800, SWP_NOZORDER
+	.ELSEIF eax == WM_CLOSE
+		INVOKE ShowWindow, hWnd, SW_HIDE
+		jmp HelpProcExit
+	.ENDIF
+	INVOKE DefWindowProc, hWnd, localMsg, wParam, lParam
+
+HelpProcExit:
+	ret
+HelpWinProc ENDP
 
 ;---------------------------------------------------
 ErrorHandler PROC

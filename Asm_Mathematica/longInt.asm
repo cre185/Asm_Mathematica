@@ -14,6 +14,7 @@ strlen			PROTO C :ptr sbyte
 
 .data
 longStr BYTE "%lld",0
+doubleStr BYTE "%lf",0
 
 .code
 ;---------------------------------------------------------------------------
@@ -381,6 +382,29 @@ LongToStr PROC,
 LongToStr ENDP
 
 ;---------------------------------------------------------------------------
+DoubleToLong PROC,
+    doubleAddr:DWORD
+; This procedure calculates long1 Exp long2
+;---------------------------------------------------------------------------
+    LOCAL tmpArray[128]:BYTE, doubleNum:REAL8, longNum:QWORD
+    pushad
+    INVOKE memset, ADDR tmpArray, 0, 128
+    mov eax, doubleAddr
+	fld REAL8 PTR [eax]
+    fstp doubleNum
+	INVOKE sprintf, ADDR tmpArray, ADDR doubleStr, doubleNum
+	INVOKE sscanf, ADDR tmpArray, ADDR longStr, ADDR longNum
+    lea eax, longNum
+    mov esi, doubleAddr
+    mov ebx, [eax+4]
+    mov [esi], ebx
+    mov ebx, [eax]
+    mov [esi+4], ebx
+    popad
+    ret
+DoubleToLong ENDP
+
+;---------------------------------------------------------------------------
 ToLong PROC,
     dataAddr:DWORD, sizeAddr:DWORD, typeAddr:DWORD
 ; This procedure calculates long1 Exp long2
@@ -393,6 +417,8 @@ ToLong PROC,
     .IF bl == TYPE_INT
         popad
         ret
+    .ELSEIF bl == TYPE_DOUBLE
+        INVOKE DoubleToLong, dataAddr
     .ELSEIF bl == TYPE_BOOL
         mov al, [edx]
         .IF al == 0

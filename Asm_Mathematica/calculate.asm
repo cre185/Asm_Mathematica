@@ -25,7 +25,7 @@ public recvBuffer, ansBuffer
 OperatorTable BYTE "FACT SQRT SIN COS TAN LN LG LOG EXP                            ",0
 			  BYTE "* / ^ % POW                                                    ",0
 			  BYTE "+ -                                                            ",0
-			  BYTE "ABS NEG IN OUT                                                 ",0
+			  BYTE "ABS NEG IN OUT FL                                              ",0
 			  BYTE "== !=                                                          ",0
 			  BYTE "&& ||                                                          ",0
 			  BYTE ":=                                                             ",0
@@ -33,7 +33,7 @@ OperatorTable BYTE "FACT SQRT SIN COS TAN LN LG LOG EXP                         
 OperatorType  BYTE "    3    3   3   3   3  3  3   3   3                           ",0
 			  BYTE " 0 0 0 0   2                                                   ",0
 			  BYTE " 0 0                                                           ",0
-			  BYTE "   3   3  3   3                                                ",0
+			  BYTE "   3   3  3   3  3                                             ",0
 			  BYTE "  0  0                                                         ",0
 			  BYTE "  0  0                                                         ",0
 			  BYTE "  0                                                            ",0
@@ -543,7 +543,10 @@ CalculateOp PROC,
 	.ENDIF
 	; Ops that can calculate using all types
 	mov eax, [Op]
-	.IF DWORD PTR [eax] == 54525153h ; SQRT
+	.IF WORD PTR [eax] == 4c46h ; FL
+		INVOKE ToLong, operand1Addr, size1Addr, type1Addr
+		INVOKE TopPush, operand1Addr, 8, TYPE_INT
+	.ELSEIF DWORD PTR [eax] == 54525153h ; SQRT
 		INVOKE ToDouble, operand1Addr, size1Addr, type1Addr
 		INVOKE Sqrt, QWORD PTR operand1, tmpOperandAddr
 		INVOKE TopPush, tmpOperandAddr, 8, TYPE_DOUBLE
@@ -662,7 +665,12 @@ CalculateOp PROC,
 	.ENDIF
 	; Ops that can calculate using all types
 	mov eax, [Op]
-	.IF WORD PTR [eax] == 2626h ; &&
+	.IF BYTE PTR [eax] == 94 ; ^
+		INVOKE ToDouble, operand1Addr, size1Addr, type1Addr
+		INVOKE ToDouble, operand2Addr, size2Addr, type2Addr
+		INVOKE DoubleExp, operand2Addr, operand1Addr
+		INVOKE TopPush, operand2Addr, 8, TYPE_DOUBLE
+	.ELSEIF WORD PTR [eax] == 2626h ; &&
 		INVOKE ToBool, operand1Addr, size1Addr, type1Addr
 		INVOKE ToBool, operand2Addr, size2Addr, type2Addr
 		INVOKE BoolAnd, operand1, operand2
@@ -685,16 +693,6 @@ CalculateOp PROC,
 	mov eax, [Op]
 	.IF type1 == TYPE_DOUBLE || type2 == TYPE_DOUBLE
 		mov eax, [Op]
-		.IF BYTE PTR [eax] == 94 ; ^
-			.IF type1 != TYPE_DOUBLE
-				INVOKE ToLong, operand1Addr, size1Addr, type1Addr
-				INVOKE DoubleExp, operand2Addr, operand1Addr
-				INVOKE TopPush, operand2Addr, 8, TYPE_DOUBLE
-			.ELSE
-				INVOKE TopPushStandardError
-			.ENDIF
-			jmp endFlag
-		.ENDIF
 		INVOKE ToDouble, operand1Addr, size1Addr, type1Addr
 		INVOKE ToDouble, operand2Addr, size2Addr, type2Addr
 		mov eax, [Op]

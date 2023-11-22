@@ -42,7 +42,6 @@ FontText BYTE "Arial",0
 StandardFont DWORD ?
 StaticFontText BYTE "Calibri",0
 StaticFont DWORD ?
-public FontText, StandardFont, StaticFontText, StaticFont
 
 InputMsg BYTE "IN:[%d]",0
 OutputMsg BYTE "OUT:[%d]",0
