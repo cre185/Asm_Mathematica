@@ -517,6 +517,26 @@ CalculateOp PROC,
 			jmp endFlag
 		.ENDIF
 	.ENDIF
+	; Ops that can calculate using all types
+	mov eax, [Op]
+	.IF DWORD PTR [eax] == 54525153h ; SQRT
+		; todo
+	.ELSEIF DWORD PTR [eax] == 4e4953h || DWORD PTR [eax] == 204e4953h ; SIN
+		; todo
+	.ELSEIF DWORD PTR [eax] == 534f43h || DWORD PTR [eax] == 20534f43h ; COS
+		; todo
+	.ELSEIF DWORD PTR [eax] == 4e4154h || DWORD PTR [eax] == 204e4154h ; TAN
+		; todo
+	.ELSEIF WORD PTR [eax] == 4e4ch ; LN
+		; todo
+	.ELSEIF WORD PTR [eax] == 474ch ; LG
+		; todo
+	.ELSEIF DWORD PTR [eax] == 474f4ch || DWORD PTR [eax] == 20474f4ch ; LOG
+		; todo
+	.ELSEIF DWORD PTR [eax] == 505845h || DWORD PTR [eax] == 20505845h ; EXP
+		; todo
+	.ENDIF
+	; These ops cares!
 	mov eax, [Op]
 	.IF type1 == TYPE_INT
 		.IF DWORD PTR [eax] == 20534241h || DWORD PTR [eax] == 534241h ; ABS
@@ -540,22 +560,6 @@ CalculateOp PROC,
 			mov ebx, [edx]
 			INVOKE Fact, ebx, tmpLongAddr
 			INVOKE TopPush, tmpLongAddr, 8, TYPE_INT
-		.ELSEIF DWORD PTR [eax] == 54525153h ; SQRT
-			; todo
-		.ELSEIF DWORD PTR [eax] == 4e4953h || DWORD PTR [eax] == 204e4953h ; SIN
-			; todo
-		.ELSEIF DWORD PTR [eax] == 534f43h || DWORD PTR [eax] == 20534f43h ; COS
-			; todo
-		.ELSEIF DWORD PTR [eax] == 4e4154h || DWORD PTR [eax] == 204e4154h ; TAN
-			; todo
-		.ELSEIF WORD PTR [eax] == 4e4ch ; LN
-			; todo
-		.ELSEIF WORD PTR [eax] == 474ch ; LG
-			; todo
-		.ELSEIF DWORD PTR [eax] == 474f4ch || DWORD PTR [eax] == 20474f4ch ; LOG
-			; todo
-		.ELSEIF DWORD PTR [eax] == 505845h || DWORD PTR [eax] == 20505845h ; EXP
-			; todo
 		.ELSE
 			jmp BinaryOp
 		.ENDIF
