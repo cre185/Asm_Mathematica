@@ -47,8 +47,6 @@ pi REAL8 3.141592653589
 ; 3. ln10: the natural logarithm of 10
 ; 4. ln2: the natural logarithm of 2
 ; 5. c0: the speed of light in vacuum
-; 6. h: Planck constant
-; 7. G: the gravitational constant
 ;---------------------------------------------------------------------------
 ; functions:
 ; 1. FACT x ===>     the factorial of x
@@ -74,8 +72,6 @@ SetConstant PROC
 ; ln10 = 2.3025850929940456840179914546844
 ; ln2 = 0.69314718055994530941723212145818
 ; c0 = 299792458 (m/s)
-; h = 6.62607004e-34 (J*s)
-; G = 6.67408e-11 (m^3/(kg*s^2))
 ;---------------------------------------------------------------------------
     LOCAL constantValue:QWORD
     pushad
