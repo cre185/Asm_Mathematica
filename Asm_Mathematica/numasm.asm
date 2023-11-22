@@ -374,13 +374,28 @@ Cos ENDP
 
 
 ;---------------------------------------------------------------------------
-; TODO: TAN x
+Tan PROC,
+    x: QWORD, ansAddr:DWORD
 ; the tangent of x
 ; method:
 ; 1. tan(x) = sin(x) / cos(x)
 ; WARNING: never use this function when cos(x) is close to 0, since 
 ; the result can be highly inaccurate
 ;---------------------------------------------------------------------------
+    LOCAL sinx:QWORD, cosx:QWORD
+    pushad
+    lea ebx, sinx
+    INVOKE Sin, x, ebx
+    lea ebx, cosx
+    INVOKE Cos, x, ebx
+    fld sinx ; stack:  BOTTOM: sinx :TOP
+    fld cosx ; stack:  BOTTOM: sinx, cosx :TOP
+    fdiv     ; stack:  BOTTOM: sinx/cosx :TOP
+    mov edx, ansAddr
+    fstp QWORD PTR [edx]
+    popad
+    ret
+Tan ENDP
 
 ;---------------------------------------------------------------------------
 ; TODO: LN x
