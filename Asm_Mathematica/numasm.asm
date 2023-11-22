@@ -31,6 +31,7 @@ c0Value BYTE "299792458", 0
 maximumTolerableErr REAL8 0.000001
 
 pi REAL8 3.141592653589
+e REAL8 2.718281828459
 
 .code
 ;---------------------------------------------------------------------------
@@ -176,7 +177,7 @@ Sqrt PROC,
         fnstsw ax
         sahf
         .IF CARRY?
-        ; |t_{n+1} - t_{n}| < 1e-6
+            ; |t_{n+1} - t_{n}| < 1e-6
             ; stop
             fld tNext
             mov ebx, ansAddr
@@ -435,7 +436,74 @@ Exp PROC,
 ; 3. e^x = e^{floor(x)}(1 + dx + dx^2/2! + dx^3/3! + ...)
 ; 4. stop calculating the series when the absolute value of the term is less than 1e-6
 ;---------------------------------------------------------------------------
+    LOCAL floorX: QWORD, expFloorX: QWORD, deltax: QWORD, deltaxPower: QWORD, sum: QWORD,  sumNext: QWORD, factVal: QWORD, i: QWORD
     pushad
+    fld x                           ; stack:  BOTTOM: x                             :TOP
+    frndint                         ; stack:  BOTTOM: floor(x)                      :TOP
+    fstp floorX                     ; floorX = floor(x)
+    fld x                           ; stack:  BOTTOM: x                             :TOP
+    fld floorX                      ; stack:  BOTTOM: x, floor(x)                   :TOP
+    fsub                            ; stack:  BOTTOM: x - floor(x)                  :TOP
+    fstp deltax                     ; deltax = x - floor(x)
+    fld1
+    fstp deltaxPower                ; deltaxPower = 1 = deltax^0
+    fldz
+    fstp sum                        ; sum = 0
+    fldz
+    fstp sumNext                    ; sumNext = 0
+    fld1
+    fstp factVal                    ; factVal = 1 = 0!
+    fldz
+    fstp i                          ; i = 0
+    INVOKE DoubleToLong, ADDR floorX ; floorX = floor(x) , from double to long
+    fld e
+    fstp expFloorX                  ; expFloorX = e
+    INVOKE DoubleExp, ADDR expFloorX, ADDR floorX ; expFloorX = e^{floor(x)}
+    Repeatedly:
+        fld sum                     ; stack:  BOTTOM: sum                                       :TOP
+        fld deltaxPower             ; stack:  BOTTOM: sum, deltaxPower                          :TOP
+        fld expFloorX               ; stack:  BOTTOM: sum, deltaxPower, expFloorX               :TOP
+        fmul                        ; stack:  BOTTOM: sum, deltaxPower*expFloorX                :TOP
+        fld factVal                 ; stack:  BOTTOM: sum, deltaxPower*expFloorX, factVal       :TOP
+        fdiv                        ; stack:  BOTTOM: sum, deltaxPower*expFloorX/factVal        :TOP
+        fadd                        ; stack:  BOTTOM: sum + deltaxPower*expFloorX/factVal       :TOP
+        fstp sumNext                ; sumNext = sum + deltaxPower*expFloorX/factVal
+        fld sumNext                 ; stack:  BOTTOM: sumNext                                   :TOP
+        fld sum                     ; stack:  BOTTOM: sumNext, sum                              :TOP
+        fsub                        ; stack:  BOTTOM: sumNext - sum                             :TOP
+        fabs                        ; stack:  BOTTOM: |sumNext - sum|                           :TOP
+        fcomp maximumTolerableErr ; compare |sumNext - sum| with 1e-6
+        fnstsw ax
+        sahf
+        .IF CARRY?
+            ; |sumNext - sum| < 1e-6
+            ; stop
+            fld sumNext
+            mov ebx, ansAddr
+            fstp QWORD PTR [ebx]
+            popad
+            ret
+        .ELSE
+            ; |sumNext - sum| >= 1e-6
+            ; refresh deltaxPower, factVal, i, sum
+            fld deltaxPower            ; stack:  BOTTOM: deltaxPower                               :TOP
+            fld deltax                 ; stack:  BOTTOM: deltaxPower, deltax                        :TOP
+            fmul                       ; stack:  BOTTOM: deltaxPower*deltax                         :TOP
+            fstp deltaxPower           ; deltaxPower = deltaxPower * deltax
+            fld factVal                ; stack:  BOTTOM: factVal                                   :TOP
+            fld i                      ; stack:  BOTTOM: factVal, i                                 :TOP
+            fld1                       ; stack:  BOTTOM: factVal, i, 1                              :TOP
+            fadd                       ; stack:  BOTTOM: factVal, i+1                                :TOP
+            fmul                       ; stack:  BOTTOM: factVal*(i+1)                              :TOP
+            fstp factVal               ; factVal = factVal * (i+1)
+            fld i                      ; stack:  BOTTOM: i                                          :TOP
+            fld1                       ; stack:  BOTTOM: i, 1                                       :TOP
+            fadd                       ; stack:  BOTTOM: i+1                                        :TOP
+            fstp i                     ; i = i + 1
+            fld sumNext
+            fstp sum    ; sum = sumNext
+            jmp Repeatedly
+        .ENDIF
     popad
     ret
 Exp ENDP
