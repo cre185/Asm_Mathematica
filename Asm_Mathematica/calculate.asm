@@ -563,7 +563,9 @@ CalculateOp PROC,
 		INVOKE Tan, QWORD PTR operand1, tmpOperandAddr
 		INVOKE TopPush, tmpOperandAddr, 8, TYPE_DOUBLE
 	.ELSEIF WORD PTR [eax] == 4e4ch ; LN
-		; todo
+		INVOKE ToDouble, operand1Addr, size1Addr, type1Addr
+		INVOKE Ln, QWORD PTR operand1, tmpOperandAddr
+		INVOKE TopPush, tmpOperandAddr, 8, TYPE_DOUBLE
 	.ELSEIF WORD PTR [eax] == 474ch ; LG
 		; todo
 	.ELSEIF DWORD PTR [eax] == 474f4ch || DWORD PTR [eax] == 20474f4ch ; LOG

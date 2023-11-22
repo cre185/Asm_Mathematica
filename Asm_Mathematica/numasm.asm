@@ -400,33 +400,6 @@ Tan PROC,
 Tan ENDP
 
 ;---------------------------------------------------------------------------
-; TODO: LN x
-; the natural logarithm of x
-; method:
-; 1. let t_{0} = an approximation of ln(x)
-; 2. recursively: t_{n+1} = t_{n} - 1 + x/e^{t_{n}}, until |t_{n+1} - t_{n}| < 1e-6
-; 
-; PROOF:
-; tangent line at (t_{n}, ln(t_{n})):
-; e^{t_{n}}(t_{n+1} - t_{n}) + e^{t_{n}} - x = 0
-; ==> t_{n+1} = t_{n} - 1 + x/e^{t_{n}}
-;---------------------------------------------------------------------------
-
-;---------------------------------------------------------------------------
-; TODO: LG x
-; the logarithm of x to base 10
-; method:
-; 1. lg(x) = ln(x) / ln(10)
-;---------------------------------------------------------------------------
-
-;---------------------------------------------------------------------------
-; TODO: LOG x
-; the logarithm of x to base 2
-; method:
-; 1. log(x) = ln(x) / ln(2)
-;---------------------------------------------------------------------------
-
-;---------------------------------------------------------------------------
 Exp PROC,
     x: QWORD, ansAddr:DWORD
 ; the exponential function e^x
@@ -507,6 +480,74 @@ Exp PROC,
     popad
     ret
 Exp ENDP
+
+;---------------------------------------------------------------------------
+Ln PROC,
+    x: QWORD, ansAddr:DWORD
+; the natural logarithm of x
+; method:
+; 1. let t_{0} = an approximation of ln(x)
+; 2. recursively: t_{n+1} = t_{n} - 1 + x/e^{t_{n}}, until |t_{n+1} - t_{n}| < 1e-6
+; 
+; PROOF:
+; tangent line at (t_{n}, ln(t_{n})):
+; e^{t_{n}}(t_{n+1} - t_{n}) + e^{t_{n}} - x = 0
+; ==> t_{n+1} = t_{n} - 1 + x/e^{t_{n}}
+;---------------------------------------------------------------------------
+    LOCAL t:QWORD, expt:QWORD, tNext:QWORD
+    pushad
+    fld x
+    fstp t ; t_{0} = x
+    Recursively:
+        INVOKE Exp, t, ADDR expt ; expt = e^{t_{n}}
+        fld t               ; stack:  BOTTOM: t_{n}                                         :TOP
+        fld1                ; stack:  BOTTOM: t_{n}, 1                                      :TOP
+        fchs                ; stack:  BOTTOM: t_{n}, -1                                     :TOP
+        fld x               ; stack:  BOTTOM: t_{n}, -1, x                                  :TOP
+        fld expt            ; stack:  BOTTOM: t_{n}, -1, x, e^{t_{n}}                       :TOP
+        fdiv                ; stack:  BOTTOM: t_{n}, -1, x/e^{t_{n}}                        :TOP
+        fadd                ; stack:  BOTTOM: t_{n}, -1 + x/e^{t_{n}}                       :TOP
+        fadd                ; stack:  BOTTOM: t_{n} - 1 + x/e^{t_{n}}                       :TOP
+        fstp tNext          ; t_{n+1} = t_{n} - 1 + x/e^{t_{n}}
+        fld tNext           ; stack:  BOTTOM: t_{n+1}                                       :TOP
+        fld t               ; stack:  BOTTOM: t_{n+1}, t_{n}                                :TOP
+        fsub                ; stack:  BOTTOM: t_{n+1} - t_{n}                               :TOP
+        fabs                ; stack:  BOTTOM: |t_{n+1} - t_{n}|                             :TOP
+        fcomp maximumTolerableErr ; compare |t_{n+1} - t_{n}| with 1e-6
+        fnstsw ax
+        sahf
+        .IF CARRY?
+            ; |t_{n+1} - t_{n}| < 1e-6
+            ; stop
+            fld tNext
+            mov ebx, ansAddr
+            fstp QWORD PTR [ebx]
+            popad
+            ret
+        .ELSE
+            ; |t_{n+1} - t_{n}| >= 1e-6
+            ; refresh t
+            fld tNext
+            fstp t ; t = t_{n+1}
+            jmp Recursively
+        .ENDIF
+    popad
+    ret
+Ln ENDP
+
+;---------------------------------------------------------------------------
+; TODO: LG x
+; the logarithm of x to base 10
+; method:
+; 1. lg(x) = ln(x) / ln(10)
+;---------------------------------------------------------------------------
+
+;---------------------------------------------------------------------------
+; TODO: LOG x
+; the logarithm of x to base 2
+; method:
+; 1. log(x) = ln(x) / ln(2)
+;---------------------------------------------------------------------------
 
 ;---------------------------------------------------------------------------
 ; TODO: POW x y
