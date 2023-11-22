@@ -223,7 +223,8 @@ Sin PROC,
     fld tmp            ; stack:  BOTTOM: 2*pi, floor(x/(2*pi))     :TOP
     fmul               ; stack:  BOTTOM: 2*pi*floor(x/(2*pi))      :TOP
     fld x              ; stack:  BOTTOM: 2*pi*floor(x/(2*pi)), x   :TOP
-    fsub               ; stack:  BOTTOM: x - 2*pi*floor(x/(2*pi))  :TOP
+    fsub               ; stack:  BOTTOM: 2*pi*floor(x/(2*pi)) - x  :TOP
+    fchs               ; stack:  BOTTOM: x - 2*pi*floor(x/(2*pi))  :TOP
     fstp deltax        ; deltax = x - 2*pi*floor(x/(2*pi))
     fld deltax
     fstp deltaxPower   ; deltaxPower = deltax

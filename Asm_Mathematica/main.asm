@@ -40,6 +40,8 @@ SCROLLINFO ENDS
 
 MAIN_WINDOW_STYLE = WS_VISIBLE+WS_DLGFRAME+WS_CAPTION+WS_BORDER+WS_SYSMENU \
 	+WS_MAXIMIZEBOX+WS_MINIMIZEBOX+WS_THICKFRAME+WS_VSCROLL
+HELP_WINDOW_STYLE = WS_VISIBLE+WS_DLGFRAME+WS_CAPTION+WS_BORDER+WS_SYSMENU \
+	+WS_MAXIMIZEBOX+WS_MINIMIZEBOX+WS_THICKFRAME
 
 ;==================== DATA =======================
 .data
@@ -61,6 +63,8 @@ ErrorTitle  BYTE "Error",0
 
 WindowName  BYTE "Asm Mathematica",0
 className   BYTE "ASMWin",0
+helpWindow BYTE "HelpWindow",0
+HelpName   BYTE "Documentation for Asm Mathematica",0
 helpMsg    BYTE "Help",0
 subMsg     BYTE "About",0
 sub2ndMsg  BYTE "Document",0
@@ -72,7 +76,8 @@ winRect   RECT <>
 mainScroll    SCROLLINFO <>
 
 hMainWnd  DWORD 0
-public hMainWnd
+hHelpWnd  DWORD 0
+public hMainWnd, hHelpWnd
 
 hHelpMenu DWORD ?
 hSubMenu  DWORD ?
@@ -87,6 +92,8 @@ public scrollHeight
 ; Define the Application's Window class structure.
 MainWin WNDCLASS <NULL,WinProc,NULL,NULL,NULL,NULL,NULL, \
 	COLOR_WINDOW,NULL,className>
+HelpWin WNDCLASS <NULL,WinProc,NULL,NULL,NULL,NULL,NULL, \
+	COLOR_WINDOW,NULL,helpWindow>
 ;=================== CODE =========================
 .code
 
@@ -104,19 +111,30 @@ WinMain PROC
 	INVOKE GetModuleHandle, NULL
 	mov hInstance, eax
 	mov MainWin.hInstance, eax
+	mov HelpWin.hInstance, eax
 
 ; Load the program's icon and cursor.
 	INVOKE LoadIcon, hInstance, IDI_ICON1
 	mov MainWin.hIcon, eax
+	mov HelpWin.hIcon, eax
 	INVOKE LoadCursor, NULL, IDC_ARROW
 	mov MainWin.hCursor, eax
+	mov HelpWin.hCursor, eax
 
 ; Initialize brush for main window 
 	INVOKE CreateSolidBrush, 0ffffffh
 	mov MainWin.hbrBackground, eax
+	mov HelpWin.hbrBackground, eax
 
 ; Register the window class.
 	INVOKE RegisterClassA, ADDR MainWin
+	.IF eax == 0
+	  call ErrorHandler
+	  jmp Exit_Program
+	.ENDIF
+
+; Register the help window class.
+	INVOKE RegisterClassA, ADDR HelpWin
 	.IF eax == 0
 	  call ErrorHandler
 	  jmp Exit_Program
@@ -298,7 +316,11 @@ WinProc PROC,
 		.IF ax == IDM_ABOUT 
 			INVOKE ShellExecute, hWnd, ADDR openText, ADDR urlText, NULL, NULL, SW_SHOWNORMAL
 		.ELSEIF ax == IDM_DOCUMENT
-			; todo
+			INVOKE CreateWindowEx, 0, ADDR helpWindow,
+			  ADDR HelpName,HELP_WINDOW_STYLE,
+			  CW_USEDEFAULT,CW_USEDEFAULT,CW_USEDEFAULT,
+			  CW_USEDEFAULT,NULL,NULL,hInstance,NULL
+			mov hHelpWnd,eax
 		.ENDIF
 	.ENDIF
 	INVOKE DefWindowProc, hWnd, localMsg, wParam, lParam

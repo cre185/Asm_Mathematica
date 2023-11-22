@@ -359,6 +359,7 @@ PolishNotation PROC
 					.IF ecx < 80000000h
 						INVOKE IsOperator, ADDR recvBuffer, ecx
 						.IF eax >= 2; the op is another op's suffix and has been treated
+							popad
 							jmp restart
 						.ENDIF
 					.ENDIF
