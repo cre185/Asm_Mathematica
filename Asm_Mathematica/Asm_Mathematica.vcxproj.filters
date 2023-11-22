@@ -45,6 +45,9 @@
     <MASM Include="solve.asm">
       <Filter>源文件</Filter>
     </MASM>
+    <MASM Include="help.asm">
+      <Filter>源文件</Filter>
+    </MASM>
   </ItemGroup>
   <ItemGroup>
     <None Include="calculate.inc">

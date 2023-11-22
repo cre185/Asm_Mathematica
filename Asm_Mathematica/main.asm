@@ -40,7 +40,7 @@ SCROLLINFO ENDS
 
 MAIN_WINDOW_STYLE = WS_VISIBLE+WS_DLGFRAME+WS_CAPTION+WS_BORDER+WS_SYSMENU \
 	+WS_MAXIMIZEBOX+WS_MINIMIZEBOX+WS_THICKFRAME+WS_VSCROLL
-HELP_WINDOW_STYLE = WS_VISIBLE+WS_CAPTION+WS_SYSMENU
+HELP_WINDOW_STYLE = WS_VISIBLE+WS_CAPTION+WS_SYSMENU+WS_VSCROLL
 
 ;==================== DATA =======================
 .data
@@ -70,11 +70,11 @@ sub2ndMsg  BYTE "Document",0
 openText   BYTE "open",0
 urlText    BYTE "https://github.com/cre185/Asm_Mathematica",0
 STATIC     BYTE "Static",0
-helpText   BYTE "asdfsad",0dh,0ah,"another",4096 DUP(0)
 
 msg	      MSGStruct <>
 winRect   RECT <>
 mainScroll    SCROLLINFO <>
+helpScroll    SCROLLINFO <>
 
 hMainWnd  DWORD 0
 hHelpWnd  DWORD 0
@@ -98,6 +98,8 @@ MainWin WNDCLASS <NULL,WinProc,NULL,NULL,NULL,NULL,NULL, \
 	COLOR_WINDOW,NULL,className>
 HelpWin WNDCLASS <NULL,HelpWinProc,NULL,NULL,NULL,NULL,NULL, \
 	COLOR_WINDOW,NULL,helpWindow>
+
+extern helpText:BYTE
 ;=================== CODE =========================
 .code
 
@@ -233,11 +235,52 @@ ScrollingWindow PROC,
 	INVOKE SetScrollInfo, hMainWnd, SB_VERT, ADDR mainScroll, 1
 	INVOKE GetScrollInfo, hMainWnd, SB_VERT, ADDR mainScroll
 	INVOKE GetWindowRect, hMainWnd, ADDR winRect
+	mov eax, winRect.bottom
+	sub eax, winRect.top
+	mov eax, winRect.bottom
+	mov winRect.top, 0
+	mov eax, winRect.right
+	sub eax, winRect.left
+	mov eax, winRect.right
+	mov winRect.left, 0
 	mov eax, oldPos
 	sub eax, mainScroll.nPos
 	INVOKE ScrollWindow, hMainWnd, 0, eax, 0, ADDR winRect
 	ret
 ScrollingWindow ENDP
+
+;-----------------------------------------------------
+ScrollHelpWindow PROC,
+	dist:DWORD
+; Move the window by distance, a positive value for rolling down,
+; negative for rolling up.
+;-----------------------------------------------------
+	LOCAL oldPos:DWORD
+	mov eax, SIZE helpScroll
+	mov helpScroll.cbSize, eax
+	mov helpScroll.fMask, SIF_ALL
+	INVOKE GetScrollInfo, hHelpWnd, SB_VERT, ADDR helpScroll
+	mov eax, helpScroll.nPos
+	mov oldPos, eax
+	mov eax, dist
+	add helpScroll.nPos, eax
+	mov helpScroll.fMask, SIF_POS
+	INVOKE SetScrollInfo, hHelpWnd, SB_VERT, ADDR helpScroll, 1
+	INVOKE GetScrollInfo, hHelpWnd, SB_VERT, ADDR helpScroll
+	INVOKE GetWindowRect, hHelpWnd, ADDR winRect
+	mov eax, winRect.bottom
+	sub eax, winRect.top
+	mov eax, winRect.bottom
+	mov winRect.top, 0
+	mov eax, winRect.right
+	sub eax, winRect.left
+	mov eax, winRect.right
+	mov winRect.left, 0
+	mov eax, oldPos
+	sub eax, helpScroll.nPos
+	INVOKE ScrollWindow, hHelpWnd, 0, eax, 0, ADDR winRect
+	ret
+ScrollHelpWindow ENDP
 
 ;-----------------------------------------------------
 IncreaseScrollBarParam PROC,
@@ -317,6 +360,10 @@ WinProc PROC,
 		.IF ax == IDM_ABOUT 
 			INVOKE ShellExecute, hWnd, ADDR openText, ADDR urlText, NULL, NULL, SW_SHOWNORMAL
 		.ELSEIF ax == IDM_DOCUMENT
+			.IF hHelpWnd != 0
+				INVOKE ShowWindow, hHelpWnd, SW_SHOW
+				ret
+			.ENDIF
 			INVOKE CreateWindowEx, 0, ADDR helpWindow,
 			    ADDR HelpName,HELP_WINDOW_STYLE,
 			    50,50,800,800,
@@ -331,13 +378,21 @@ WinProc PROC,
 				ANTIALIASED_QUALITY, FF_DONTCARE, ADDR FontText
 			mov StandardFont, eax
 			INVOKE CreateWindowEx, 0, ADDR STATIC, 
-				ADDR helpText,WS_CHILD+WS_VISIBLE+SS_CENTER, 
-				15,20,750,720,
+				ADDR helpText,WS_CHILD+WS_VISIBLE, 
+				15,20,1050,920,
 				hHelpWnd,NULL,hInstance,NULL
 			.IF eax == 0
 				INVOKE ErrorHandler
 			.ENDIF
 			INVOKE SendMessage, eax, WM_SETFONT, StandardFont, 1
+			; Set scrollBar
+			mov eax, SIZE helpScroll
+			mov helpScroll.cbSize, eax
+			mov helpScroll.fMask, SIF_ALL
+			mov helpScroll.nMin, 0
+			mov helpScroll.nMax, 1000
+			mov helpScroll.nPage, 1
+			INVOKE SetScrollInfo, hHelpWnd, SB_VERT, ADDR helpScroll, 1
 		.ENDIF
 	.ENDIF
 	INVOKE DefWindowProc, hWnd, localMsg, wParam, lParam
@@ -352,7 +407,7 @@ HelpWinProc PROC,
 ;-----------------------------------------------------
 	mov eax, localMsg
 	.IF eax == WM_CREATE
-		INVOKE SetWindowPos, hWnd, NULL, 50, 50, 800, 800, SWP_NOZORDER
+		INVOKE SetWindowPos, hWnd, NULL, 50, 50, 1100, 1000, SWP_NOZORDER
 	.ELSEIF eax == WM_CTLCOLORSTATIC
 		mov eax, wParam
 		;mov edx, 0ff0000h
@@ -360,6 +415,36 @@ HelpWinProc PROC,
 		mov edx, 0ffffffh
 		INVOKE CreateSolidBrush, edx
 		ret
+	.ELSEIF eax == WM_VSCROLL
+		mov eax, SIZE helpScroll
+		mov helpScroll.cbSize, eax
+		mov helpScroll.fMask, SIF_ALL
+		INVOKE GetScrollInfo, hWnd, SB_VERT, ADDR helpScroll
+		mov ebx, wParam
+		.IF bx == SB_LINEUP
+			INVOKE ScrollHelpWindow, -30
+		.ELSEIF bx == SB_LINEDOWN
+			INVOKE ScrollHelpWindow, 30
+		.ELSEIF bx == SB_PAGEUP
+			INVOKE ScrollHelpWindow, -30
+		.ELSEIF bx == SB_PAGEDOWN
+			INVOKE ScrollHelpWindow, 30
+		.ELSEIF bx == SB_THUMBPOSITION
+			mov eax, helpScroll.nTrackPos
+			sub eax, helpScroll.nPos
+			INVOKE ScrollHelpWindow, eax
+		.ENDIF
+	.ELSEIF eax == WM_MOUSEWHEEL
+		mov eax, SIZE mainScroll
+		mov helpScroll.cbSize, eax
+		mov helpScroll.fMask, SIF_ALL
+		INVOKE GetScrollInfo, hWnd, SB_VERT, ADDR helpScroll
+		mov eax, wParam
+		.IF eax < 80000000h
+			INVOKE ScrollHelpWindow, -30
+		.ELSE
+			INVOKE ScrollHelpWindow, 30
+		.ENDIF
 	.ELSEIF eax == WM_CLOSE
 		INVOKE ShowWindow, hWnd, SW_HIDE
 		jmp HelpProcExit
@@ -394,8 +479,5 @@ messageID  DWORD ?
 	INVOKE LocalFree, pErrorMsg
 	ret
 ErrorHandler ENDP
-
-; INVOKE MessageBox, NULL, ADDR PopupTitle, ADDR PopupText, MB_OK
-
 
 END WinMain
