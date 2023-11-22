@@ -114,29 +114,60 @@ DoubleDiv ENDP
 
 ;-----------------------------------------------------
 DoubleExp PROC,
-	doubleAddr1:DWORD, doubleAddr2:DWORD
+	doubleAddr1:DWORD, long2Addr:DWORD
 ;-----------------------------------------------------
+	LOCAL product:QWORD, tmpDouble:QWORD, tmpExp:QWORD
 	pushad
-	mov eax, [doubleAddr1]
-	fld REAL8 PTR [eax]
-	mov eax, [doubleAddr2]
-	mov ecx, [eax+4]
-	.IF ecx == 0
-		fld1
-		mov eax, [doubleAddr1]
-		fstp REAL8 PTR [eax]
+	mov ebx, long2Addr
+	add ebx, 4 ; ebx points at the lower 32 bits of the exponent
+	mov eax, [ebx] ; eax = lower 32 bits of the exponent
+	.IF eax == 1
+		; do nothing
 		popad
 		ret
 	.ENDIF
-	dec ecx
-	.WHILE ecx > 0
-		mov eax, [doubleAddr1]
-		fld REAL8 PTR [eax]
-		fmul
-		dec ecx
-	.ENDW
-	mov eax, [doubleAddr1]
-	fstp REAL8 PTR [eax]
+	.IF eax == 0
+		; put 1 in [doubleAddr1]
+		fld1
+		fstp REAL8 PTR [doubleAddr1]
+		popad
+		ret
+	.ENDIF
+	.IF eax == 0ffffffffh
+		fld1
+		fld REAL8 PTR [doubleAddr1]
+		fdiv
+		fstp REAL8 PTR [doubleAddr1]
+		popad
+		ret
+	.ENDIF
+	
+	fld1
+	fstp product ; product = 1
+
+	mov edx, eax
+	shr edx, 1
+	shl edx, 1
+	.IF eax != edx
+		; that eax is odd
+		fld REAL8 PTR [doubleAddr1]
+		fstp product
+	.ENDIF
+	; put eax >> 1 in tmpExp
+	sar eax, 1
+	lea ebx, tmpExp
+	add ebx, 4
+	mov [ebx], eax
+	
+	fld REAL8 PTR [doubleAddr1]
+	fstp tmpDouble
+	INVOKE DoubleExp, ADDR tmpDouble, ADDR tmpExp
+	fld product
+	fld tmpDouble
+	fld tmpDouble
+	fmul
+	fmul
+	fstp REAL8 PTR [doubleAddr1]
 	popad
 	ret
 DoubleExp ENDP

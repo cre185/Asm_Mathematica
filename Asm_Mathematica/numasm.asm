@@ -423,7 +423,8 @@ Tan ENDP
 ;---------------------------------------------------------------------------
 
 ;---------------------------------------------------------------------------
-; TODO: EXP x
+Exp PROC,
+    x: QWORD, ansAddr:DWORD
 ; the exponential function e^x
 ; method:
 ; 1. get dx = decimal part of x (i.e. x = floor(x)+dx)
@@ -431,6 +432,10 @@ Tan ENDP
 ; 3. e^x = e^{floor(x)}(1 + dx + dx^2/2! + dx^3/3! + ...)
 ; 4. stop calculating the series when the absolute value of the term is less than 1e-6
 ;---------------------------------------------------------------------------
+    pushad
+    popad
+    ret
+Exp ENDP
 
 ;---------------------------------------------------------------------------
 ; TODO: POW x y
