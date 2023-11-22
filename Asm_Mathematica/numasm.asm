@@ -228,9 +228,9 @@ Sin PROC,
     fmul               ; stack:  BOTTOM: 2*pi*floor(x/(2*pi))      :TOP
     fld x              ; stack:  BOTTOM: 2*pi*floor(x/(2*pi)), x   :TOP
     fsub               ; stack:  BOTTOM: x - 2*pi*floor(x/(2*pi))  :TOP
-    fstp deltax            ; deltax = x - 2*pi*floor(x/(2*pi))
+    fstp deltax        ; deltax = x - 2*pi*floor(x/(2*pi))
     fld deltax
-    fstp deltaxPower       ; deltaxPower = deltax
+    fstp deltaxPower   ; deltaxPower = deltax
     fld1
     fstp factVal       ; factVal = 1 = 1!
     fld1
@@ -238,16 +238,16 @@ Sin PROC,
     mov ecx, 1         ; ecx = 1
     Repeatedly:
         fld sum        ; stack:  BOTTOM: sum                                :TOP
-        fld deltaxPower    ; stack:  BOTTOM: sum, deltaxPower               :TOP
+        fld deltaxPower; stack:  BOTTOM: sum, deltaxPower               :TOP
         fld factVal    ; stack:  BOTTOM: sum, deltaxPower, factVal          :TOP
         fdiv           ; stack:  BOTTOM: sum, deltaxPower/factVal           :TOP
         fadd           ; stack:  BOTTOM: sum + deltaxPower/factVal          :TOP
         fstp sum       ; sum = sum + deltaxPower/factVal
         ; refresh deltaxPower, factVal, i
         ; 1. deltaxPower = deltaxPower * deltax^2
-        fld deltaxPower    ; stack:  BOTTOM: deltaxPower                    :TOP
-        fld deltax         ; stack:  BOTTOM: deltaxPower, deltax            :TOP
-        fld deltax         ; stack:  BOTTOM: deltaxPower, deltax, deltax    :TOP
+        fld deltaxPower; stack:  BOTTOM: deltaxPower                    :TOP
+        fld deltax     ; stack:  BOTTOM: deltaxPower, deltax            :TOP
+        fld deltax     ; stack:  BOTTOM: deltaxPower, deltax, deltax    :TOP
         fmul           ; stack:  BOTTOM: deltaxPower, deltax^2              :TOP
         fmul           ; stack:  BOTTOM: deltaxPower * deltax^2             :TOP
         fstp deltaxPower   ; deltaxPower = deltaxPower * deltax^2
