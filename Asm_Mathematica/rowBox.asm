@@ -63,7 +63,7 @@ currentY DWORD 30
 marginY DWORD 20
 staticWidth DWORD 64
 marginEdit DWORD 16
-editMarginTop DWORD 3
+editMarginTop DWORD 2
 public WndRect, boxHeight, currentY, marginY, staticWidth, marginEdit
 
 DRAWItemStruct STRUCT
