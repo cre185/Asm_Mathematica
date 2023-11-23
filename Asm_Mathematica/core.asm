@@ -557,10 +557,30 @@ CalculateOp PROC,
 		INVOKE TopPush, tmpOperandAddr, 8, TYPE_DOUBLE
 	.ELSEIF WORD PTR [eax] == 474ch ; LG
 		INVOKE ToDouble, operand1Addr, size1Addr, type1Addr
+		; domain: operand1 > 0
+		fld QWORD PTR operand1
+		fcomp Zero
+		fstsw ax
+		sahf
+		; if operand1 <= 0, then error
+		.IF CARRY? || ZERO?
+			INVOKE TopPushError, ADDR variableOutOfDomainText
+			jmp endFlag
+		.ENDIF
 		INVOKE Lg, QWORD PTR operand1, tmpOperandAddr
 		INVOKE TopPush, tmpOperandAddr, 8, TYPE_DOUBLE
 	.ELSEIF DWORD PTR [eax] == 474f4ch || DWORD PTR [eax] == 20474f4ch ; LOG
 		INVOKE ToDouble, operand1Addr, size1Addr, type1Addr
+		; domain: operand1 > 0
+		fld QWORD PTR operand1
+		fcomp Zero
+		fstsw ax
+		sahf
+		; if operand1 <= 0, then error
+		.IF CARRY? || ZERO?
+			INVOKE TopPushError, ADDR variableOutOfDomainText
+			jmp endFlag
+		.ENDIF
 		INVOKE Log, QWORD PTR operand1, tmpOperandAddr
 		INVOKE TopPush, tmpOperandAddr, 8, TYPE_DOUBLE
 	.ELSEIF DWORD PTR [eax] == 505845h || DWORD PTR [eax] == 20505845h ; EXP
