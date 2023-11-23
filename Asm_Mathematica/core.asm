@@ -48,6 +48,7 @@ FalseText BYTE "False",0
 VarUndefinedText BYTE "Variable referenced before assigned!",0
 variableOutOfDomainText BYTE "Variable out of domain!",0
 Zero REAL8 0.0
+pi REAL8 3.14159265358979323846264338328
 
 CalCount DWORD 0
 public CalCount
@@ -475,6 +476,7 @@ CalculateOp PROC,
 	LOCAL operand1[128]:BYTE, operand2[128]:BYTE
 	LOCAL operand1Addr:DWORD, operand2Addr:DWORD
 	LOCAL tmpOperand:QWORD, tmpOperandAddr:DWORD, tmpPtr:DWORD
+	LOCAL tmpBool:BYTE, tmpBoolAddr:DWORD
 	pushad
 	LEA eax, type1
 	mov type1Addr, eax
@@ -490,6 +492,8 @@ CalculateOp PROC,
 	mov operand2Addr, eax
 	LEA eax, tmpOperand
 	mov tmpOperandAddr, eax
+	LEA eax, tmpBool
+	mov tmpBoolAddr, eax
 	INVOKE memset, ADDR operand1, 0, 128
 	INVOKE memset, ADDR operand2, 0, 128
 
@@ -726,13 +730,13 @@ CalculateOp PROC,
 			INVOKE DoubleDiv, operand2Addr, operand1Addr
 			INVOKE TopPush, operand2Addr, 8, TYPE_DOUBLE
 		.ELSEIF WORD PTR [eax] == 3d3dh ; ==
-			INVOKE DoubleEqu, operand1Addr, operand2Addr
-			INVOKE TopPush, operand1Addr, 1, TYPE_BOOL
+			INVOKE DoubleEqu, QWORD PTR operand1, QWORD PTR operand2, tmpBoolAddr
+			INVOKE TopPush, tmpBoolAddr, 1, TYPE_BOOL
 		.ELSEIF WORD PTR [eax] == 3d21h ; !=
-			INVOKE DoubleEqu, operand1Addr, operand2Addr
-			INVOKE BoolNot, operand1
-			mov operand1, al
-			INVOKE TopPush, operand1Addr, 1, TYPE_BOOL
+			INVOKE DoubleEqu, QWORD PTR operand1, QWORD PTR operand2, tmpBoolAddr
+			INVOKE BoolNot, tmpBool
+			mov tmpBool, al
+			INVOKE TopPush, tmpBoolAddr, 1, TYPE_BOOL
 		.ELSE
 			INVOKE TopPushStandardError
 		.ENDIF
