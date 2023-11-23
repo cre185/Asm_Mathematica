@@ -75,9 +75,11 @@ msg	      MSGStruct <>
 winRect   RECT <>
 mainScroll    SCROLLINFO <>
 helpScroll    SCROLLINFO <>
+staticPaint   PAINTSTRUCT <>
 
 hMainWnd  DWORD 0
 hHelpWnd  DWORD 0
+hHelpStatic DWORD 0
 public hMainWnd, hHelpWnd
 
 hHelpMenu DWORD ?
@@ -379,8 +381,9 @@ WinProc PROC,
 			mov StandardFont, eax
 			INVOKE CreateWindowEx, 0, ADDR STATIC, 
 				ADDR helpText,WS_CHILD+WS_VISIBLE, 
-				15,20,1050,920,
+				15,20,1050,2000,
 				hHelpWnd,NULL,hInstance,NULL
+			mov hHelpStatic, eax
 			.IF eax == 0
 				INVOKE ErrorHandler
 			.ENDIF
@@ -390,7 +393,7 @@ WinProc PROC,
 			mov helpScroll.cbSize, eax
 			mov helpScroll.fMask, SIF_ALL
 			mov helpScroll.nMin, 0
-			mov helpScroll.nMax, 1000
+			mov helpScroll.nMax, 700
 			mov helpScroll.nPage, 1
 			INVOKE SetScrollInfo, hHelpWnd, SB_VERT, ADDR helpScroll, 1
 		.ENDIF
@@ -405,6 +408,7 @@ WinProc ENDP
 HelpWinProc PROC,
 	hWnd:DWORD, localMsg:DWORD, wParam:DWORD, lParam:DWORD
 ;-----------------------------------------------------
+	LOCAL hDC:DWORD
 	mov eax, localMsg
 	.IF eax == WM_CREATE
 		INVOKE SetWindowPos, hWnd, NULL, 50, 50, 1100, 1000, SWP_NOZORDER
