@@ -2,7 +2,7 @@
 .model flat, stdcall
 option casemap: none
 
-include  		calculate.inc
+include  		core.inc
 include			macro.inc
 include         mathStack.inc
 include         numasm.inc

@@ -2,7 +2,7 @@
 .model flat, stdcall
 option casemap: none
 
-include  		calculate.inc
+include  		core.inc
 include			macro.inc
 strcmp          PROTO C :ptr sbyte, :ptr sbyte
 strncpy			PROTO C :ptr sbyte, :ptr sbyte, :DWORD

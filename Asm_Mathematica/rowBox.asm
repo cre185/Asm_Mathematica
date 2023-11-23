@@ -15,7 +15,7 @@ include         msvcrt.inc
 includelib      msvcrt.lib
 include         shell32.inc
 includelib      shell32.lib
-include  		calculate.inc
+include  		core.inc
 include			main.inc
 include			macro.inc
 includelib      msvcrt.lib
