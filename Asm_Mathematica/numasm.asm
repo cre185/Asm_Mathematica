@@ -118,6 +118,7 @@ Fact PROC,
         shl eax, 2 ; x *= 4
         add ebx, eax
         mov edi, ansAddr
+        mov DWORD PTR [edi], 0
         add edi, 4
         mov edx, [ebx] ; [ebx] = factorialTable[x]
         mov [edi], edx
