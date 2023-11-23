@@ -203,22 +203,26 @@ DoubleExp ENDP
 
 ;-----------------------------------------------------
 DoubleEqu PROC,
-	doubleAddr1:DWORD, doubleAddr2:DWORD
+	double1:QWORD, double2:QWORD, ansAddr:DWORD
 ;-----------------------------------------------------
 	pushad
-	mov eax, [doubleAddr1]
-	fld REAL8 PTR [eax]
-	mov eax, [doubleAddr2]
-	fsub REAL8 PTR [eax]
+	fld double1
+	fld double2
+	fsub
+	fabs ; |double1 - double2|
 	fcomp maximumTolerableErr
 	fnstsw ax
     sahf
 	.IF CARRY?
-		mov eax, [doubleAddr1]
-		mov BYTE PTR [eax], 1
+		; |double1 - double2| < maximumTolerableErr
+		; put 1 in [ansAddr]
+		mov ebx, ansAddr
+		mov BYTE PTR [ebx], 1
 	.ELSE
-		mov eax, [doubleAddr1]
-		mov BYTE PTR [eax], 0
+		; |double1 - double2| >= maximumTolerableErr
+		; put 0 in [ansAddr]
+		mov ebx, ansAddr
+		mov BYTE PTR [ebx], 0
 	.ENDIF
 	popad
 	ret
