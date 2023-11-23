@@ -8,10 +8,12 @@ include			double.inc
 memset			PROTO C :ptr sbyte, :DWORD, :DWORD
 sscanf			PROTO C :ptr sbyte, :ptr sbyte, :VARARG
 sprintf         PROTO C :ptr sbyte, :ptr sbyte, :VARARG
+strcpy			PROTO C :ptr sbyte, :ptr sbyte
 
 .data
 doubleStr BYTE "%lf",0
 longStr BYTE "%lld",0
+infStr BYTE "Inf",0
 
 .code
 ;-----------------------------------------------------
@@ -228,8 +230,23 @@ DoubleToStr PROC,
 	mov eax, [ansAddr]
 	fld REAL8 PTR [eax]
 	fstp doubleNum
-	INVOKE memset, ansAddr, 0, MaxBufferSize
-	INVOKE sprintf, ansAddr, ADDR doubleStr, doubleNum
+	mov eax, [ansAddr]
+	.IF DWORD PTR [eax+4] == 7ff00000h && DWORD PTR [eax] == 0
+		INVOKE memset, ansAddr, 0, MaxBufferSize
+		mov eax, [ansAddr]
+		mov BYTE PTR [eax], 43 ; +
+		inc eax
+		INVOKE strcpy, eax, ADDR infStr
+	.ELSEIF DWORD PTR [eax+4] == 0fff00000h && DWORD PTR [eax] == 0
+		INVOKE memset, ansAddr, 0, MaxBufferSize
+		mov eax, [ansAddr]
+		mov BYTE PTR [eax], 45 ; -
+		inc eax
+		INVOKE strcpy, eax, ADDR infStr
+	.ELSE
+		INVOKE memset, ansAddr, 0, MaxBufferSize
+		INVOKE sprintf, ansAddr, ADDR doubleStr, doubleNum
+	.ENDIF
 	popad
 	ret
 DoubleToStr ENDP
