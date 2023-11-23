@@ -15,6 +15,8 @@ doubleStr BYTE "%lf",0
 longStr BYTE "%lld",0
 infStr BYTE "Inf",0
 
+extern maximumTolerableErr:REAL8
+
 .code
 ;-----------------------------------------------------
 StrToDouble PROC,
@@ -207,10 +209,11 @@ DoubleEqu PROC,
 	mov eax, [doubleAddr1]
 	fld REAL8 PTR [eax]
 	mov eax, [doubleAddr2]
-	fcomp REAL8 PTR [eax]
+	fsub REAL8 PTR [eax]
+	fcomp maximumTolerableErr
 	fnstsw ax
     sahf
-	.IF ZERO?
+	.IF CARRY?
 		mov eax, [doubleAddr1]
 		mov BYTE PTR [eax], 1
 	.ELSE
