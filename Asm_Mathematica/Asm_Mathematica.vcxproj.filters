@@ -18,7 +18,7 @@
     <MASM Include="main.asm">
       <Filter>源文件</Filter>
     </MASM>
-    <MASM Include="calculate.asm">
+    <MASM Include="core.asm">
       <Filter>源文件</Filter>
     </MASM>
     <MASM Include="rowBox.asm">
@@ -50,7 +50,7 @@
     </MASM>
   </ItemGroup>
   <ItemGroup>
-    <None Include="calculate.inc">
+    <None Include="core.inc">
       <Filter>头文件</Filter>
     </None>
     <None Include="rowBox.inc">

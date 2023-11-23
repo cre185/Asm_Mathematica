@@ -2,7 +2,7 @@
 .model flat, stdcall
 option casemap: none
 
-include  		calculate.inc
+include  		core.inc
 include			macro.inc
 include			mathStack.inc
 include			longInt.inc
@@ -641,10 +641,10 @@ CalculateOp PROC,
 	; Ops that can calculate using all types
 	mov eax, [Op]
 	.IF BYTE PTR [eax] == 94 ; ^
-		INVOKE ToLong, operand1Addr, size1Addr, type1Addr
+		INVOKE ToDouble, operand1Addr, size1Addr, type1Addr
 		INVOKE ToDouble, operand2Addr, size2Addr, type2Addr
-		INVOKE DoubleExp, operand2Addr, operand1Addr
-		INVOKE TopPush, operand2Addr, 8, TYPE_DOUBLE
+		INVOKE Pow, QWORD PTR operand2, QWORD PTR operand1, tmpOperandAddr
+		INVOKE TopPush, tmpOperandAddr, 8, TYPE_DOUBLE
 	.ELSEIF WORD PTR [eax] == 2626h ; &&
 		INVOKE ToBool, operand1Addr, size1Addr, type1Addr
 		INVOKE ToBool, operand2Addr, size2Addr, type2Addr
