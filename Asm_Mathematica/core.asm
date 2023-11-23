@@ -25,7 +25,7 @@ public recvBuffer, ansBuffer
 OperatorTable BYTE "FACT SQRT SIN COS TAN LN LG LOG EXP                            ",0
 			  BYTE "* / ^ %                                                        ",0
 			  BYTE "+ -                                                            ",0
-			  BYTE "ABS NEG IN OUT FL                                              ",0
+			  BYTE "ABS NEG NOT IN OUT FL                                          ",0
 			  BYTE "== !=                                                          ",0
 			  BYTE "&& ||                                                          ",0
 			  BYTE ":=                                                             ",0
@@ -33,7 +33,7 @@ OperatorTable BYTE "FACT SQRT SIN COS TAN LN LG LOG EXP                         
 OperatorType  BYTE "    3    3   3   3   3  3  3   3   3                           ",0
 			  BYTE " 0 0 0 0                                                       ",0
 			  BYTE " 0 0                                                           ",0
-			  BYTE "   3   3  3   3  3                                             ",0
+			  BYTE "   3   3   3  3   3  3                                             ",0
 			  BYTE "  0  0                                                         ",0
 			  BYTE "  0  0                                                         ",0
 			  BYTE "  0                                                            ",0
@@ -45,8 +45,11 @@ TestText BYTE "reached here!",0
 InOutError BYTE "Invalid use of IN/OUT!",0
 TrueText BYTE "True",0
 FalseText BYTE "False",0
+ParseErrorText BYTE "Invalid expresion!",0
 VarUndefinedText BYTE "Variable referenced before assigned!",0
 variableOutOfDomainText BYTE "Variable out of domain!",0
+
+ParseErrorFlag BYTE 0
 Zero REAL8 0.0
 pi REAL8 3.14159265358979323846264338328
 
@@ -56,6 +59,16 @@ public CalCount
 EXTERN calculationStack:BYTE, calculationStackTop:DWORD, calculationStackBase:DWORD
 
 .code
+;-----------------------------------------------------
+ParseError PROC
+; Indicating an error occured while parsing the calculation
+;-----------------------------------------------------
+	pushad
+	mov ParseErrorFlag, 1
+	popad
+	ret
+ParseError ENDP
+
 ;-----------------------------------------------------
 UpdateOperator PROC,
 	index:DWORD
@@ -196,7 +209,8 @@ RightBrace PROC,
 			mov bl, BYTE PTR [edx+ecx]
 		.ENDW
 		.IF eax != 0
-			; exception
+			INVOKE ParseError
+			ret
 		.ENDIF
 		INVOKE InsertChar, array, ecx, 41
 	.ELSE
@@ -206,6 +220,10 @@ RightBrace PROC,
 		mov eax, 0
 		.REPEAT
 			inc ecx
+			.IF ecx >= MaxBufferSize
+				INVOKE ParseError
+				ret
+			.ENDIF
 			mov bl, BYTE PTR [edx+ecx]
 			; should pass: 65-90 functions (as a whole, so special treat 91'[', 93']'), 46'.', 48-57 numbers and 97-122 values, 32' '
 			.IF bl == 91
@@ -220,6 +238,10 @@ RightBrace PROC,
 				dec eax
 			.ENDIF
 		.UNTIL ecx >= MaxBufferSize || (bl != 46 && (bl < 48 || bl > 57) && (bl < 65 || bl > 90) && bl != 32 && (bl < 97 || bl > 122) && bl != 91 && bl != 93 && eax == 0)
+		.IF ecx >= MaxBufferSize
+			INVOKE ParseError
+			ret
+		.ENDIF
 		INVOKE InsertChar, array, ecx, 41
 	.ENDIF
 	ret
@@ -282,7 +304,7 @@ AddBrace PROC,
 		sub ecx, 2
 		mov eax, 1
 		mov bl, BYTE PTR [edx+ecx]
-		.WHILE ecx >= 0 && eax > 0
+		.WHILE ecx < 80000000h && eax > 0
 			.IF bl == 41
 				inc eax
 			.ELSEIF bl == 40 ; (
@@ -291,8 +313,10 @@ AddBrace PROC,
 			dec ecx
 			mov bl, BYTE PTR [edx+ecx]
 		.ENDW
-		.IF ecx < 0
-			; exception
+		.IF ecx >= 80000000h
+			INVOKE ParseError
+			popad
+			ret
 		.ENDIF
 		inc ecx
 		INVOKE InsertChar, array, ecx, 40
@@ -314,14 +338,9 @@ AddBrace PROC,
 				.ENDIF
 				dec eax
 			.ENDIF
-		.UNTIL ecx > 80000000h || (bl != 46 && (bl < 48 || bl > 57) && (bl < 65 || bl > 90) && bl != 32 && (bl < 97 || bl > 122) && bl != 91 && bl != 93 && eax == 0)
-		inc ecx
-		.IF ecx > 80000000h
-			; exception
-		.ENDIF
+		.UNTIL ecx == 0 || (bl != 46 && (bl < 48 || bl > 57) && (bl < 65 || bl > 90) && bl != 32 && (bl < 97 || bl > 122) && bl != 91 && bl != 93 && eax == 0)
 		INVOKE InsertChar, array, ecx, 40
 	.ENDIF
-
 	popad
 	ret
 AddBrace ENDP
@@ -405,13 +424,14 @@ PolishNotation PROC
 				INVOKE IsOperator, ADDR recvBuffer, ecx, ADDR OperatorTable, OperatorTableLength
 				.IF eax >= 2; the op is another op's suffix and has been treated
 					popad
+					popad
 					jmp removeStart
 				.ENDIF
 			.ENDIF
 			popad
 			mov esi, ecx
 			mov ebx, 1
-			.WHILE ebx > 0
+			.WHILE ebx > 0 && ecx < MaxBufferSize
 				inc ecx
 				mov dl, BYTE PTR [recvBuffer+ecx]
 				.IF dl == 41
@@ -420,6 +440,10 @@ PolishNotation PROC
 					inc ebx
 				.ENDIF
 			.ENDW ;'Op'...) <- ecx
+			.IF ecx == MaxBufferSize
+				popad 
+				ret
+			.ENDIF
 			inc ecx
 			mov edi, ecx 
 			.WHILE eax > 0
@@ -591,6 +615,11 @@ CalculateOp PROC,
 		INVOKE ToDouble, operand1Addr, size1Addr, type1Addr
 		INVOKE Exp, QWORD PTR operand1, tmpOperandAddr
 		INVOKE TopPush, tmpOperandAddr, 8, TYPE_DOUBLE
+	.ELSEIF DWORD PTR [eax] == 544f4eh || DWORD PTR [eax] == 20544f4eh ; NOT
+		INVOKE ToBool, operand1Addr, size1Addr, type1Addr
+		INVOKE BoolNot, operand1
+		mov operand1, al
+		INVOKE TopPush, operand1Addr, 1, TYPE_BOOL
 	.ELSE
 		jmp TypeDif1
 	.ENDIF
@@ -871,6 +900,10 @@ CalculatePN PROC
 		inc ansBufferStartingLoc
 		jmp L1
 	END_LOOP:
+	.IF ParseErrorFlag != 0
+		INVOKE TopPop
+		INVOKE TopPushError, ADDR ParseErrorText
+	.ENDIF
 	INVOKE TopType, ADDR finalType
 	INVOKE TopData, ADDR ansBuffer
 	.IF finalType == TYPE_INT
@@ -914,6 +947,7 @@ CalculateResult PROC
 ; Answer storing in ansBuffer
 ;-----------------------------------------------------
 	inc CalCount
+	mov ParseErrorFlag, 0
 	INVOKE memset, ADDR ansBuffer, 0, MaxBufferSize
 	INVOKE PolishNotation
 	INVOKE CalculatePN
