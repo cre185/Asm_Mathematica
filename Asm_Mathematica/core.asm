@@ -477,6 +477,7 @@ CalculateOp PROC,
 	LOCAL operand1Addr:DWORD, operand2Addr:DWORD
 	LOCAL tmpOperand:QWORD, tmpOperandAddr:DWORD, tmpPtr:DWORD
 	LOCAL tmpBool:BYTE, tmpBoolAddr:DWORD
+	LOCAL tmpDouble1: QWORD, tmpDouble2: QWORD
 	pushad
 	LEA eax, type1
 	mov type1Addr, eax
@@ -543,6 +544,28 @@ CalculateOp PROC,
 		INVOKE TopPush, tmpOperandAddr, 8, TYPE_DOUBLE
 	.ELSEIF DWORD PTR [eax] == 4e4154h || DWORD PTR [eax] == 204e4154h ; TAN
 		INVOKE ToDouble, operand1Addr, size1Addr, type1Addr
+		; check domain: operand1 != pi/2 + k*pi
+		fld QWORD PTR operand1 			; stack: BOTTOM: operand1			:TOP
+		fld pi 					; stack: BOTTOM: operand1, pi		:TOP
+		fld1 					; stack: BOTTOM: operand1, pi, 1	:TOP
+		fld1 					; stack: BOTTOM: operand1, pi, 1, 1	:TOP
+		fadd 					; stack: BOTTOM: operand1, pi, 2	:TOP
+		fdiv 					; stack: BOTTOM: operand1, pi/2		:TOP
+		fsub 					; stack: BOTTOM: operand1-pi/2		:TOP
+		fstp tmpDouble1 		; tmpDouble1 = operand1-pi/2
+		fld tmpDouble1 			; stack: BOTTOM: operand1-pi/2		:TOP
+		fld pi 					; stack: BOTTOM: operand1-pi/2, pi	:TOP
+		fdiv 					; stack: BOTTOM: (operand1-pi/2)/pi	:TOP
+		frndint 				; stack: BOTTOM: round((operand1-pi/2)/pi)	:TOP
+		fld pi 					; stack: BOTTOM: round((operand1-pi/2)/pi), pi	:TOP
+		fmul 					; stack: BOTTOM: round((operand1-pi/2)/pi)*pi	:TOP
+		fstp tmpDouble2 		; tmpDouble2 = round((operand1-pi/2)/pi)*pi
+		INVOKE DoubleEqu, tmpDouble1, tmpDouble2, tmpBoolAddr
+		.IF tmpBool == 1
+			; being pi/2 + k*pi
+			INVOKE TopPushError, ADDR variableOutOfDomainText
+			jmp endFlag
+		.ENDIF
 		INVOKE Tan, QWORD PTR operand1, tmpOperandAddr
 		INVOKE TopPush, tmpOperandAddr, 8, TYPE_DOUBLE
 	.ELSEIF WORD PTR [eax] == 4e4ch ; LN

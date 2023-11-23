@@ -4,8 +4,8 @@ option casemap: none
 
 .data
 helpText    BYTE "Operators Definition Rules",0dh,0ah,0dh,0ah
-			BYTE "This document describes the definition rules of the operators used in the assembly language program. The operators are classified into seven groups"
-			BYTE "according to their precedence and functionality. The higher the precedence, the earlier the operator is evaluated.",0dh,0ah,0dh,0ah
+			BYTE "This document describes the definition rules of the operators used in this assembly language program. The operators are classified into seven groups"
+			BYTE " according to their precedence and functionality. The higher the precedence, the earlier the operator is evaluated.",0dh,0ah,0dh,0ah
 			BYTE "Group 1: Mathematical Functions",0dh,0ah,0dh,0ah
 			BYTE "The operators in this group are used to perform various mathematical functions on the operands. They have the highest precedence."
 			BYTE "The operands must be numerical values or expressions that can be evaluated to numerical values. The operators and their definitions are as follows:",0dh,0ah,0dh,0ah
@@ -16,7 +16,7 @@ helpText    BYTE "Operators Definition Rules",0dh,0ah,0dh,0ah
 			BYTE "TAN: This operator calculates the tangent of the operand in radians. For example, TAN 0.7854 returns 1, which is tan(pi/4).",0dh,0ah
 			BYTE "LN: This operator calculates the natural logarithm of the operand. For example, LN 2.71828 returns 1, which is ln(e).",0dh,0ah
 			BYTE "LG: This operator calculates the common logarithm of the operand. For example, LG 10 returns 1, which is log10(10).",0dh,0ah
-			BYTE "LOG: This operator calculates the logarithm of the first operand with respect to the second operand as the base. For example, LOG 8,2 returns 3, which is log2(8).",0dh,0ah
+			BYTE "LOG: This operator calculates the logarithm of operand to base 2. For example, LOG 8 returns 3, which is log2(8).",0dh,0ah
 			BYTE "EXP: This operator calculates the exponential function of the operand. For example, EXP 1 returns 2.71828, which is e^1.",0dh,0ah,0dh,0ah
 			BYTE "Group 2: Multiplicative Operators",0dh,0ah,0dh,0ah
 			BYTE "The operators in this group are used to perform multiplication, division, exponentiation, and modulo operations on the operands. They have the second highest precedence.",0dh,0ah
