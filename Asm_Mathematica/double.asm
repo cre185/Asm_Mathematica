@@ -296,7 +296,7 @@ ToDouble PROC,
 		.ENDIF
 		fstp REAL8 PTR [edx]
 	.ENDIF
-	mov BYTE PTR [edx], TYPE_BOOL
+	mov BYTE PTR [edi], TYPE_BOOL
 	mov WORD PTR [esi], 8
 	popad
 	ret
