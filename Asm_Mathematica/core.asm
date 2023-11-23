@@ -210,7 +210,6 @@ RightBrace PROC,
 		.ENDW
 		.IF eax != 0
 			INVOKE ParseError
-			ret
 		.ENDIF
 		INVOKE InsertChar, array, ecx, 41
 	.ELSE
@@ -222,7 +221,6 @@ RightBrace PROC,
 			inc ecx
 			.IF ecx >= MaxBufferSize
 				INVOKE ParseError
-				ret
 			.ENDIF
 			mov bl, BYTE PTR [edx+ecx]
 			; should pass: 65-90 functions (as a whole, so special treat 91'[', 93']'), 46'.', 48-57 numbers and 97-122 values, 32' '
@@ -240,7 +238,6 @@ RightBrace PROC,
 		.UNTIL ecx >= MaxBufferSize || (bl != 46 && (bl < 48 || bl > 57) && (bl < 65 || bl > 90) && bl != 32 && (bl < 97 || bl > 122) && bl != 91 && bl != 93 && eax == 0)
 		.IF ecx >= MaxBufferSize
 			INVOKE ParseError
-			ret
 		.ENDIF
 		INVOKE InsertChar, array, ecx, 41
 	.ENDIF
@@ -315,8 +312,6 @@ AddBrace PROC,
 		.ENDW
 		.IF ecx >= 80000000h
 			INVOKE ParseError
-			popad
-			ret
 		.ENDIF
 		inc ecx
 		INVOKE InsertChar, array, ecx, 40
@@ -923,10 +918,6 @@ CalculatePN PROC
 		inc ansBufferStartingLoc
 		jmp L1
 	END_LOOP:
-	.IF ParseErrorFlag != 0
-		INVOKE TopPop
-		INVOKE TopPushError, ADDR ParseErrorText
-	.ENDIF
 	INVOKE TopType, ADDR finalType
 	INVOKE TopData, ADDR ansBuffer
 	.IF finalType == TYPE_INT
@@ -970,7 +961,6 @@ CalculateResult PROC
 ; Answer storing in ansBuffer
 ;-----------------------------------------------------
 	inc CalCount
-	mov ParseErrorFlag, 0
 	INVOKE memset, ADDR ansBuffer, 0, MaxBufferSize
 	INVOKE PolishNotation
 	INVOKE CalculatePN
