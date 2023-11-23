@@ -46,6 +46,8 @@ InOutError BYTE "Invalid use of IN/OUT!",0
 TrueText BYTE "True",0
 FalseText BYTE "False",0
 VarUndefinedText BYTE "Variable referenced before assigned!",0
+variableOutOfDomainText BYTE "Variable out of domain!",0
+Zero REAL8 0.0
 
 CalCount DWORD 0
 public CalCount
@@ -515,6 +517,16 @@ CalculateOp PROC,
 		INVOKE TopPush, operand1Addr, 8, TYPE_INT
 	.ELSEIF DWORD PTR [eax] == 54525153h ; SQRT
 		INVOKE ToDouble, operand1Addr, size1Addr, type1Addr
+		; domain: operand1 >= 0
+		fld QWORD PTR operand1
+		fcomp Zero
+		fstsw ax
+		sahf
+		; if operand1 < 0, then error
+		.IF CARRY?
+			INVOKE TopPushError, ADDR variableOutOfDomainText
+			jmp endFlag
+		.ENDIF
 		INVOKE Sqrt, QWORD PTR operand1, tmpOperandAddr
 		INVOKE TopPush, tmpOperandAddr, 8, TYPE_DOUBLE
 	.ELSEIF DWORD PTR [eax] == 4e4953h || DWORD PTR [eax] == 204e4953h ; SIN
@@ -531,6 +543,16 @@ CalculateOp PROC,
 		INVOKE TopPush, tmpOperandAddr, 8, TYPE_DOUBLE
 	.ELSEIF WORD PTR [eax] == 4e4ch ; LN
 		INVOKE ToDouble, operand1Addr, size1Addr, type1Addr
+		; domain: operand1 > 0
+		fld QWORD PTR operand1
+		fcomp Zero
+		fstsw ax
+		sahf
+		; if operand1 <= 0, then error
+		.IF CARRY? || ZERO?
+			INVOKE TopPushError, ADDR variableOutOfDomainText
+			jmp endFlag
+		.ENDIF
 		INVOKE Ln, QWORD PTR operand1, tmpOperandAddr
 		INVOKE TopPush, tmpOperandAddr, 8, TYPE_DOUBLE
 	.ELSEIF WORD PTR [eax] == 474ch ; LG
