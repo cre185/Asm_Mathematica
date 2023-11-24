@@ -333,7 +333,11 @@ AddBrace PROC,
 				.ENDIF
 				dec eax
 			.ENDIF
-		.UNTIL ecx == 0 || (bl != 46 && (bl < 48 || bl > 57) && (bl < 65 || bl > 90) && bl != 32 && (bl < 97 || bl > 122) && bl != 91 && bl != 93 && eax == 0)
+		.UNTIL ecx > 80000000h || (bl != 46 && (bl < 48 || bl > 57) && (bl < 65 || bl > 90) && bl != 32 && (bl < 97 || bl > 122) && bl != 91 && bl != 93 && eax == 0)
+		inc ecx
+		.IF ecx > 80000000h
+			INVOKE ParseError
+		.ENDIF
 		INVOKE InsertChar, array, ecx, 40
 	.ENDIF
 	popad
